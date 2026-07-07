@@ -131,14 +131,14 @@ const InvoiceDetail = () => {
                 <tr className="border-b border-slate-200">
                   <td className="py-3 text-slate-700">{t('electricity')}</td>
                   <td className="py-3 text-slate-500">
-                    {invoice.electricity_start} → {invoice.electricity_end} kWh × {invoice.electricity_rate}
+                    {invoice.electricity_start} → {invoice.electricity_end} kWh × $ {invoice.electricity_rate}
                   </td>
                   <td className="py-3 text-right text-slate-950">{formatCurrency(invoice.electricity_cost, invoice.currency)}</td>
                 </tr>
                 <tr className="border-b border-slate-200">
                   <td className="py-3 text-slate-700">{t('water')}</td>
                   <td className="py-3 text-slate-500">
-                    {invoice.water_occupants} occupants × {invoice.water_price}
+                    {invoice.water_occupants} occupants × $ {invoice.water_price}
                   </td>
                   <td className="py-3 text-right text-slate-950">{formatCurrency(invoice.water_cost, invoice.currency)}</td>
                 </tr>

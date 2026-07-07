@@ -230,15 +230,19 @@ const CreateInvoice = () => {
 
             <div>
               <Label htmlFor="elec_rate">{t('electricityRate')}</Label>
-              <Input
-                id="elec_rate"
-                type="number"
-                step="0.01"
-                data-testid="electricity-rate-input"
-                value={formData.electricity_rate}
-                onChange={(e) => setFormData({ ...formData, electricity_rate: e.target.value })}
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="elec_rate"
+                  type="number"
+                  step="0.01"
+                  data-testid="electricity-rate-input"
+                  value={formData.electricity_rate}
+                  onChange={(e) => setFormData({ ...formData, electricity_rate: e.target.value })}
+                  className="pr-12"
+                  required
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -255,15 +259,19 @@ const CreateInvoice = () => {
               </div>
               <div>
                 <Label htmlFor="water_price">{t('waterPrice')}</Label>
-                <Input
-                  id="water_price"
-                  type="number"
-                  step="0.01"
-                  data-testid="water-price-input"
-                  value={formData.water_price}
-                  onChange={(e) => setFormData({ ...formData, water_price: e.target.value })}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="water_price"
+                    type="number"
+                    step="0.01"
+                    data-testid="water-price-input"
+                    value={formData.water_price}
+                    onChange={(e) => setFormData({ ...formData, water_price: e.target.value })}
+                    className="pr-12"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+                </div>
               </div>
             </div>
 
