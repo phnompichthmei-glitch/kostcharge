@@ -55,7 +55,7 @@ const Login = () => {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <img 
-              src="https://customer-assets.emergentagent.com/job_kostcharge/artifacts/jthn87d6_ppt.png" 
+              src="https://customer-assets.emergentagent.com/job_kostcharge/artifacts/mjhfiq2c_brand.png" 
               alt="Rent Room Logo" 
               className="h-24 w-24 mx-auto mb-4 object-contain"
             />

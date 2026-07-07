@@ -46,7 +46,7 @@ const Layout = ({ children }) => {
           <div className="flex items-center space-x-8">
             <div className="flex items-center space-x-3">
               <img 
-                src="https://customer-assets.emergentagent.com/job_kostcharge/artifacts/jthn87d6_ppt.png" 
+                src="https://customer-assets.emergentagent.com/job_kostcharge/artifacts/mjhfiq2c_brand.png" 
                 alt="Rent Room Phnom Pich Thmei Logo" 
                 className="h-12 w-12 object-contain"
               />

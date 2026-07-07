@@ -538,7 +538,7 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     
     # Logo
     try:
-        logo_url = "https://customer-assets.emergentagent.com/job_kostcharge/artifacts/jthn87d6_ppt.png"
+        logo_url = "https://customer-assets.emergentagent.com/job_kostcharge/artifacts/mjhfiq2c_brand.png"
         logo_response = requests.get(logo_url, timeout=5)
         if logo_response.status_code == 200:
             logo_buffer = BytesIO(logo_response.content)
