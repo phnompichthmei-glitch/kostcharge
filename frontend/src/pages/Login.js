@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 
 const Login = () => {
   const { t } = useTranslation();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
@@ -27,7 +27,7 @@ const Login = () => {
     try {
       const result = isLogin
         ? await login(formData.email, formData.password)
-        : await login(formData.email, formData.password);
+        : await register(formData.email, formData.password, formData.name);
 
       if (result.success) {
         navigate('/dashboard');

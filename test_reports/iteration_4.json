@@ -1,0 +1,20 @@
+{
+  "summary": "Bug fix verified: Registration now correctly calls POST /api/auth/register instead of login. New users can register with fresh email, are auto-logged in, and redirected to /dashboard. No regression on existing admin login. Duplicate email registration returns proper error message.",
+  "tested_scope": ["frontend", "backend", "auth", "integration"],
+  "passed": [
+    "Backend POST /api/auth/register with new email returns 200 with user object",
+    "Backend POST /api/auth/register with existing email (admin@kostcharge.com) returns 400 'Email already registered'",
+    "Backend POST /api/auth/login with admin@kostcharge.com/admin123 returns 200",
+    "UI: Login page loads with email/password inputs",
+    "UI: Toggle 'Don't have an account? Register' shows Name field",
+    "UI: Registering new user (uitest_<ts>@example.com) auto-logs in and redirects to /dashboard (verified 'UI Test User' shown in header)",
+    "UI: Existing admin login (admin@kostcharge.com/admin123) still works and redirects to /dashboard",
+    "UI: Duplicate email registration displays inline error 'Email already registered'"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Minor non-blocking: console shows WebSocket warning (socket.io) and 401 on /api/auth/me before login - expected behavior. Bug fix at Login.js line 30 is confirmed working end-to-end."
+}
