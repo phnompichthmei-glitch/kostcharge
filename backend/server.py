@@ -521,6 +521,109 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
+    # Get user language preference from settings
+    settings = await db.settings.find_one({"user_id": user["id"]}, {"_id": 0})
+    lang = settings.get("default_language", "id") if settings else "id"
+    
+    # Translation dictionary for PDF
+    translations = {
+        "id": {
+            "invoice": "TAGIHAN",
+            "invoice_number": "Nomor Tagihan:",
+            "date": "Tanggal:",
+            "tenant": "Penyewa:",
+            "room": "Kamar:",
+            "period": "Periode:",
+            "currency": "Mata Uang:",
+            "description": "Keterangan",
+            "details": "Detail",
+            "amount": "Jumlah",
+            "rent": "Sewa",
+            "electricity": "Listrik",
+            "water": "Air",
+            "deposit": "Deposit",
+            "total": "TOTAL",
+            "notes": "Catatan:",
+            "status": "Status:",
+            "paid": "LUNAS",
+            "pending": "PENDING",
+            "overdue": "LEWAT JATUH TEMPO",
+            "occupants": "penghuni"
+        },
+        "en": {
+            "invoice": "INVOICE",
+            "invoice_number": "Invoice Number:",
+            "date": "Date:",
+            "tenant": "Tenant:",
+            "room": "Room:",
+            "period": "Period:",
+            "currency": "Currency:",
+            "description": "Description",
+            "details": "Details",
+            "amount": "Amount",
+            "rent": "Rent",
+            "electricity": "Electricity",
+            "water": "Water",
+            "deposit": "Deposit",
+            "total": "TOTAL",
+            "notes": "Notes:",
+            "status": "Status:",
+            "paid": "PAID",
+            "pending": "PENDING",
+            "overdue": "OVERDUE",
+            "occupants": "occupants"
+        },
+        "zh": {
+            "invoice": "发票",
+            "invoice_number": "发票号码：",
+            "date": "日期：",
+            "tenant": "租户：",
+            "room": "房间：",
+            "period": "期间：",
+            "currency": "货币：",
+            "description": "说明",
+            "details": "详情",
+            "amount": "金额",
+            "rent": "租金",
+            "electricity": "电费",
+            "water": "水费",
+            "deposit": "押金",
+            "total": "总计",
+            "notes": "备注：",
+            "status": "状态：",
+            "paid": "已付",
+            "pending": "待付",
+            "overdue": "逾期",
+            "occupants": "居住人数"
+        },
+        "km": {
+            "invoice": "វិក្កយបត្រ",
+            "invoice_number": "លេខវិក្កយបត្រ:",
+            "date": "កាលបរិច្ឆេទ:",
+            "tenant": "អ្នកជួល:",
+            "room": "បន្ទប់:",
+            "period": "រយៈពេល:",
+            "currency": "រូបិយប័ណ្ណ:",
+            "description": "ការពិពណ៌នា",
+            "details": "ព័ត៌មានលម្អិត",
+            "amount": "ចំនួនទឹកប្រាក់",
+            "rent": "ថ្លៃជួល",
+            "electricity": "អគ្គិសនី",
+            "water": "ទឹក",
+            "deposit": "បញ្ញើប្រាក់",
+            "total": "សរុប",
+            "notes": "កំណត់ចំណាំ:",
+            "status": "ស្ថានភាព:",
+            "paid": "បានបង់",
+            "pending": "រងចាំ",
+            "overdue": "ហួសកំណត់",
+            "occupants": "អ្នករស់នៅ"
+        }
+    }
+    
+    # Get translations for selected language
+    t = translations.get(lang, translations["id"])
+    
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
     
@@ -549,17 +652,17 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
         print(f"Could not load logo: {e}")
     
     # Title
-    story.append(Paragraph("INVOICE", title_style))
+    story.append(Paragraph(t["invoice"], title_style))
     story.append(Spacer(1, 0.2 * inch))
     
     # Invoice details
     invoice_info = [
-        ["Invoice Number:", invoice["serial_number"]],
-        ["Date:", datetime.fromisoformat(invoice["created_at"]).strftime("%d/%m/%Y")],
-        ["Tenant:", invoice["tenant_name"]],
-        ["Room:", invoice["room_number"]],
-        ["Period:", f"{invoice['month']:02d}/{invoice['year']}"],
-        ["Currency:", invoice["currency"]]
+        [t["invoice_number"], invoice["serial_number"]],
+        [t["date"], datetime.fromisoformat(invoice["created_at"]).strftime("%d/%m/%Y")],
+        [t["tenant"], invoice["tenant_name"]],
+        [t["room"], invoice["room_number"]],
+        [t["period"], f"{invoice['month']:02d}/{invoice['year']}"],
+        [t["currency"], invoice["currency"]]
     ]
     
     info_table = Table(invoice_info, colWidths=[2 * inch, 4 * inch])
@@ -576,12 +679,12 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     
     # Billing breakdown
     billing_data = [
-        ["Description", "Details", "Amount"],
-        ["Rent", "-", f"{invoice['rent']:,.2f}"],
-        ["Electricity", f"{invoice['electricity_start']} → {invoice['electricity_end']} kWh × {invoice['electricity_rate']}", f"{invoice['electricity_cost']:,.2f}"],
-        ["Water", f"{invoice['water_occupants']} occupants × {invoice['water_price']}", f"{invoice['water_cost']:,.2f}"],
-        ["Deposit", "-", f"{invoice['deposit']:,.2f}"],
-        ["", "TOTAL", f"{invoice['total']:,.2f}"]
+        [t["description"], t["details"], t["amount"]],
+        [t["rent"], "-", f"{invoice['rent']:,.2f}"],
+        [t["electricity"], f"{invoice['electricity_start']} → {invoice['electricity_end']} kWh × {invoice['electricity_rate']}", f"{invoice['electricity_cost']:,.2f}"],
+        [t["water"], f"{invoice['water_occupants']} {t['occupants']} × {invoice['water_price']}", f"{invoice['water_cost']:,.2f}"],
+        [t["deposit"], "-", f"{invoice['deposit']:,.2f}"],
+        ["", t["total"], f"{invoice['total']:,.2f}"]
     ]
     
     billing_table = Table(billing_data, colWidths=[2 * inch, 2.5 * inch, 1.5 * inch])
@@ -604,13 +707,14 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     if invoice.get("notes"):
         story.append(Spacer(1, 0.3 * inch))
         notes_style = ParagraphStyle('Notes', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#475569'))
-        story.append(Paragraph(f"<b>Notes:</b> {invoice['notes']}", notes_style))
+        story.append(Paragraph(f"<b>{t['notes']}</b> {invoice['notes']}", notes_style))
     
     # Status
     story.append(Spacer(1, 0.3 * inch))
     status_color = "#16A34A" if invoice["status"] == "paid" else "#EAB308" if invoice["status"] == "pending" else "#DC2626"
     status_style = ParagraphStyle('Status', parent=styles['Normal'], fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
-    story.append(Paragraph(f"<b>Status: {invoice['status'].upper()}</b>", status_style))
+    status_text = t["paid"] if invoice["status"] == "paid" else t["pending"] if invoice["status"] == "pending" else t["overdue"]
+    story.append(Paragraph(f"<b>{t['status']} {status_text}</b>", status_style))
     
     doc.build(story)
     buffer.seek(0)
