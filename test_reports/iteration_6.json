@@ -1,0 +1,20 @@
+{
+  "summary": "Retested PDF invoice generation for all 4 languages (id/en/zh/km) after Chinese STSong-Light + Khmer KhmerOS TTF font fix. All languages render correctly with proper glyphs, no black boxes, no font conflict.",
+  "tested_scope": ["backend", "integration"],
+  "passed": [
+    "Admin login (admin@kostcharge.com/admin123) -> 200",
+    "Setup: tenant + invoice created successfully",
+    "PDF (id) -> 200, keywords TAGIHAN/Sewa/Listrik/Air/Deposit/TOTAL/$ all present",
+    "PDF (en) -> 200, keywords INVOICE/Rent/Electricity/Water/Deposit/TOTAL/$ all present",
+    "PDF (zh) -> 200, Chinese glyphs 发票/租金/电费/水费/押金/总计/待付 all extractable (STSong-Light CID working)",
+    "PDF (km) -> 200, Khmer glyphs វិក្កយបត្រ/ថ្លៃជួល/អគ្គិសនី/ទឹក/សរុប all extractable (KhmerOS TTF working)",
+    "Khmer PDF contains NO Chinese characters (no font conflict)",
+    "$ symbol present in all 4 language PDFs",
+    "Billing calculation accurate: rent $100 + elec $25 (50kWh*0.5) + water $5 + deposit $50 = TOTAL $180.00"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "not tested (backend-only request)"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}

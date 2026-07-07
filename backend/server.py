@@ -26,6 +26,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+from reportlab.pdfbase.ttfonts import TTFont
 import requests
 
 # Register Unicode CID fonts for Chinese/Japanese/Korean support
@@ -34,6 +35,15 @@ try:
     print("✓ Chinese CID font registered successfully")
 except Exception as e:
     print(f"Warning: Could not register Chinese font: {e}")
+
+# Register Khmer TrueType font
+try:
+    khmer_font_path = '/usr/share/fonts/truetype/khmeros/KhmerOSsiemreap.ttf'
+    if os.path.exists(khmer_font_path):
+        pdfmetrics.registerFont(TTFont('KhmerOS', khmer_font_path))
+        print("✓ Khmer font registered successfully")
+except Exception as e:
+    print(f"Warning: Could not register Khmer font: {e}")
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -636,10 +646,16 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
     
-    # Use Chinese CID font for zh and km languages
-    use_cjk_font = lang in ['zh', 'km']
-    base_font = 'STSong-Light' if use_cjk_font else 'Helvetica'
-    bold_font = 'STSong-Light' if use_cjk_font else 'Helvetica-Bold'
+    # Use appropriate font for each language
+    if lang == 'zh':
+        base_font = 'STSong-Light'
+        bold_font = 'STSong-Light'
+    elif lang == 'km':
+        base_font = 'KhmerOS'
+        bold_font = 'KhmerOS'
+    else:
+        base_font = 'Helvetica'
+        bold_font = 'Helvetica-Bold'
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
