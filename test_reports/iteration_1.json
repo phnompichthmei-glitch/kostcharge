@@ -1,0 +1,44 @@
+{
+  "summary": "Smoke tested backend + frontend for KostCharge MVP. Login/auth works via HttpOnly cookies. Dashboard loads and shows stats. GET endpoints (tenants, invoices, dashboard/stats) work correctly. Serial number format INV-YYYYMM-XXXX confirmed (INV-202607-0001). Electricity/water auto-calculation correct. HOWEVER, POST /api/tenants and POST /api/invoices return 500 Internal Server Error due to a MongoDB ObjectId serialization bug — records ARE persisted, but the response fails, so the UI will show errors on create even though data saves. This is a critical blocker for the create flows.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login returns 200 and sets access_token cookie (HttpOnly)",
+    "GET /api/auth/me returns user profile after login",
+    "GET /api/dashboard/stats returns correct schema (total_tenants, total_uncollected, pending/overdue)",
+    "GET /api/tenants returns list correctly (data persisted despite POST 500)",
+    "GET /api/invoices returns list with correct serial format INV-202607-0001",
+    "Invoice auto-calculation correct: electricity_cost = (end-start)*rate = 50*1500 = 75000; water_cost = occupants*price = 2*30000 = 60000; total = 1,635,000",
+    "Frontend loads login page, authenticates, redirects to /dashboard",
+    "Dashboard UI renders correctly with stats cards and Bahasa Indonesia labels (Total Penyewa, Tagihan Pending, etc.)",
+    "Navigation bar has Dashboard, Penyewa, Tagihan, Pengaturan, language switcher (ID), Admin, Keluar"
+  ],
+  "failed": [
+    {
+      "area": "Backend - POST /api/tenants",
+      "issue": "Returns 500 Internal Server Error on create. FastAPI response serialization fails: 'ObjectId' object is not iterable / vars() argument must have __dict__ attribute. The tenant IS saved to DB (visible in GET /api/tenants), but the create response cannot be serialized.",
+      "evidence": "Traceback in /var/log/supervisor/backend.err.log: File fastapi/encoders.py line 330: ValueError: [TypeError(\"'ObjectId' object is not iterable\"), TypeError('vars() argument must have __dict__ attribute')]. Endpoint likely returns raw pymongo document with _id: ObjectId instead of the Pydantic Tenant model.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "Backend - POST /api/invoices",
+      "issue": "Returns 500 Internal Server Error on create (same root cause). Invoice IS created (serial INV-202607-0001 visible in GET list), but the POST response fails serialization, so the frontend will treat create as failed.",
+      "evidence": "curl POST /api/invoices with valid payload {month, year, rent, water_occupants, water_price, electricity_start/end/rate, ...} returns 'Internal Server Error' while GET /api/invoices shows the new invoice was persisted.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "Backend - API contract mismatch (documentation vs implementation)",
+      "issue": "Tenant model expects water_price_per_month and electricity_rate_per_kwh (NOT water_price / electricity_rate as stated in the problem statement). Invoice model expects month, year, rent, water_occupants, water_price (NOT period_month, period_year, rent_amount, water_amount). Main agent should verify the frontend forms send the correct field names.",
+      "evidence": "422 validation errors from Pydantic showing required fields: body.water_price_per_month, body.electricity_rate_per_kwh, body.month, body.year, body.rent, body.water_occupants, body.water_price",
+      "priority": "MEDIUM"
+    }
+  ],
+  "action_items": [
+    "Fix POST /api/tenants and POST /api/invoices in /app/backend/server.py to return a properly serialized Pydantic model instead of raw pymongo document (strip _id or use model_dump). Likely fix: after insert_one, fetch/build the response using the Pydantic model (e.g. `return Tenant(**doc)` where doc uses id (str) not _id (ObjectId)).",
+    "Verify all other POST/PUT endpoints (invoice status update, settings, etc.) for the same ObjectId serialization issue.",
+    "Verify frontend CreateInvoice.js and Tenants.js form field names match backend Pydantic model (water_price_per_month, electricity_rate_per_kwh, month, year, rent, water_occupants, water_price).",
+    "After fix, retest end-to-end: create tenant via UI, create invoice via UI, verify PDF download, mark as paid, WebSocket real-time updates, language switcher, currency formatting, logout."
+  ],
+  "success_rate": {"backend": "60% (5 of 8 endpoints tested passed; both create endpoints broken)", "frontend": "70% (login + dashboard verified; create flows not verified end-to-end due to backend blocker)"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

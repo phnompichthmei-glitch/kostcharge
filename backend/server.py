@@ -1,81 +1,733 @@
-from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
-import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
-
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi.responses import StreamingResponse
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
+import os
+import logging
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional, Dict
+from datetime import datetime, timezone, timedelta
+import bcrypt
+import jwt
+import socketio
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
+# Socket.IO setup
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+
+# Create the main app
 app = FastAPI()
+
+# Socket.IO ASGI app
+socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# JWT Configuration
+JWT_ALGORITHM = "HS256"
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+def get_jwt_secret() -> str:
+    return os.environ.get("JWT_SECRET", "your-secret-key-change-this")
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+# Password hashing functions
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+# JWT token functions
+def create_access_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
+        "type": "access"
+    }
+    return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+def create_refresh_token(user_id: str) -> str:
+    payload = {
+        "sub": user_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "type": "refresh"
+    }
+    return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
+
+# Get current user dependency
+async def get_current_user(request: Request) -> dict:
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])}, {"_id": 0, "password_hash": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        user["id"] = str(user.get("id", payload["sub"]))
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Pydantic Models
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class TenantCreate(BaseModel):
+    name: str
+    room_number: str
+    contact: str
+    rent_amount: float
+    water_price_per_month: float
+    electricity_rate_per_kwh: float
+    occupants: int = 1
+    status: str = "active"
+
+class TenantUpdate(BaseModel):
+    name: Optional[str] = None
+    room_number: Optional[str] = None
+    contact: Optional[str] = None
+    rent_amount: Optional[float] = None
+    water_price_per_month: Optional[float] = None
+    electricity_rate_per_kwh: Optional[float] = None
+    occupants: Optional[int] = None
+    status: Optional[str] = None
+
+class InvoiceCreate(BaseModel):
+    tenant_id: str
+    month: int
+    year: int
+    rent: float
+    electricity_start: float
+    electricity_end: float
+    electricity_rate: float
+    water_occupants: int
+    water_price: float
+    deposit: float
+    currency: str = "IDR"
+    notes: Optional[str] = None
+
+class InvoiceUpdate(BaseModel):
+    rent: Optional[float] = None
+    electricity_start: Optional[float] = None
+    electricity_end: Optional[float] = None
+    electricity_rate: Optional[float] = None
+    water_occupants: Optional[int] = None
+    water_price: Optional[float] = None
+    deposit: Optional[float] = None
+    currency: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
+class SettingsUpdate(BaseModel):
+    default_currency: Optional[str] = None
+    default_language: Optional[str] = None
+
+# Helper function to generate invoice serial number
+async def generate_invoice_serial(year: int, month: int) -> str:
+    year_month = f"{year}{month:02d}"
+    count = await db.invoices.count_documents({"year": year, "month": month})
+    return f"INV-{year_month}-{(count + 1):04d}"
+
+# Auth endpoints
+@api_router.post("/auth/register")
+async def register(data: RegisterRequest, response: Response):
+    email = data.email.lower()
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    user_doc = {
+        "email": email,
+        "password_hash": hash_password(data.password),
+        "name": data.name,
+        "role": "user",
+        "created_at": datetime.now(timezone.utc)
+    }
+    result = await db.users.insert_one(user_doc)
+    user_id = str(result.inserted_id)
     
-    return status_checks
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=900,
+        path="/"
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=604800,
+        path="/"
+    )
+    
+    return {"id": user_id, "email": email, "name": data.name, "role": "user"}
+
+@api_router.post("/auth/login")
+async def login(data: LoginRequest, request: Request, response: Response):
+    email = data.email.lower()
+    
+    # Check brute force
+    identifier = f"{request.client.host}:{email}"
+    attempt = await db.login_attempts.find_one({"identifier": identifier})
+    if attempt and attempt.get("count", 0) >= 5:
+        lockout_until = attempt.get("locked_until")
+        if lockout_until and lockout_until > datetime.now(timezone.utc):
+            raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
+    
+    user = await db.users.find_one({"email": email})
+    if not user or not verify_password(data.password, user["password_hash"]):
+        # Increment failed attempts
+        await db.login_attempts.update_one(
+            {"identifier": identifier},
+            {
+                "$inc": {"count": 1},
+                "$set": {
+                    "locked_until": datetime.now(timezone.utc) + timedelta(minutes=15),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            },
+            upsert=True
+        )
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Clear failed attempts
+    await db.login_attempts.delete_one({"identifier": identifier})
+    
+    user_id = str(user["_id"])
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=900,
+        path="/"
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=604800,
+        path="/"
+    )
+    
+    return {
+        "id": user_id,
+        "email": user["email"],
+        "name": user["name"],
+        "role": user.get("role", "user")
+    }
+
+@api_router.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/")
+    return {"message": "Logged out successfully"}
+
+@api_router.get("/auth/me")
+async def get_me(user: dict = Depends(get_current_user)):
+    return user
+
+@api_router.post("/auth/refresh")
+async def refresh(request: Request, response: Response):
+    token = request.cookies.get("refresh_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="No refresh token")
+    try:
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        user_id = str(user["_id"])
+        access_token = create_access_token(user_id, user["email"])
+        
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=900,
+            path="/"
+        )
+        return {"message": "Token refreshed"}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Tenant endpoints
+@api_router.get("/tenants")
+async def get_tenants(user: dict = Depends(get_current_user)):
+    tenants = await db.tenants.find({}, {"_id": 0}).to_list(1000)
+    return tenants
+
+@api_router.post("/tenants")
+async def create_tenant(data: TenantCreate, user: dict = Depends(get_current_user)):
+    tenant_doc = data.model_dump()
+    tenant_doc["id"] = str(ObjectId())
+    tenant_doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    tenant_doc["created_by"] = user["id"]
+    
+    await db.tenants.insert_one(tenant_doc)
+    await sio.emit("tenant_created", tenant_doc)
+    return tenant_doc
+
+@api_router.get("/tenants/{tenant_id}")
+async def get_tenant(tenant_id: str, user: dict = Depends(get_current_user)):
+    tenant = await db.tenants.find_one({"id": tenant_id}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return tenant
+
+@api_router.put("/tenants/{tenant_id}")
+async def update_tenant(tenant_id: str, data: TenantUpdate, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.tenants.update_one({"id": tenant_id}, {"$set": update_data})
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    tenant = await db.tenants.find_one({"id": tenant_id}, {"_id": 0})
+    await sio.emit("tenant_updated", tenant)
+    return tenant
+
+@api_router.delete("/tenants/{tenant_id}")
+async def delete_tenant(tenant_id: str, user: dict = Depends(get_current_user)):
+    result = await db.tenants.delete_one({"id": tenant_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    await sio.emit("tenant_deleted", {"id": tenant_id})
+    return {"message": "Tenant deleted successfully"}
+
+# Invoice endpoints
+@api_router.get("/invoices")
+async def get_invoices(
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query["status"] = status
+    if search:
+        query["$or"] = [
+            {"serial_number": {"$regex": search, "$options": "i"}},
+            {"tenant_name": {"$regex": search, "$options": "i"}}
+        ]
+    
+    invoices = await db.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return invoices
+
+@api_router.post("/invoices")
+async def create_invoice(data: InvoiceCreate, user: dict = Depends(get_current_user)):
+    # Get tenant info
+    tenant = await db.tenants.find_one({"id": data.tenant_id}, {"_id": 0})
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    # Calculate electricity
+    electricity_usage = data.electricity_end - data.electricity_start
+    electricity_cost = electricity_usage * data.electricity_rate
+    
+    # Calculate water
+    water_cost = data.water_price * data.water_occupants
+    
+    # Calculate total
+    total = data.rent + electricity_cost + water_cost + data.deposit
+    
+    # Generate serial number
+    serial_number = await generate_invoice_serial(data.year, data.month)
+    
+    invoice_doc = {
+        "id": str(ObjectId()),
+        "serial_number": serial_number,
+        "tenant_id": data.tenant_id,
+        "tenant_name": tenant["name"],
+        "room_number": tenant["room_number"],
+        "month": data.month,
+        "year": data.year,
+        "rent": data.rent,
+        "electricity_start": data.electricity_start,
+        "electricity_end": data.electricity_end,
+        "electricity_rate": data.electricity_rate,
+        "electricity_usage": electricity_usage,
+        "electricity_cost": electricity_cost,
+        "water_occupants": data.water_occupants,
+        "water_price": data.water_price,
+        "water_cost": water_cost,
+        "deposit": data.deposit,
+        "total": total,
+        "currency": data.currency,
+        "status": "pending",
+        "notes": data.notes,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user["id"]
+    }
+    
+    await db.invoices.insert_one(invoice_doc)
+    await sio.emit("invoice_created", invoice_doc)
+    return invoice_doc
+
+@api_router.get("/invoices/{invoice_id}")
+async def get_invoice(invoice_id: str, user: dict = Depends(get_current_user)):
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return invoice
+
+@api_router.put("/invoices/{invoice_id}")
+async def update_invoice(invoice_id: str, data: InvoiceUpdate, user: dict = Depends(get_current_user)):
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    # Recalculate if billing components changed
+    if any(k in update_data for k in ["rent", "electricity_start", "electricity_end", "electricity_rate", "water_occupants", "water_price", "deposit"]):
+        rent = update_data.get("rent", invoice["rent"])
+        elec_start = update_data.get("electricity_start", invoice["electricity_start"])
+        elec_end = update_data.get("electricity_end", invoice["electricity_end"])
+        elec_rate = update_data.get("electricity_rate", invoice["electricity_rate"])
+        water_occupants = update_data.get("water_occupants", invoice["water_occupants"])
+        water_price = update_data.get("water_price", invoice["water_price"])
+        deposit = update_data.get("deposit", invoice["deposit"])
+        
+        electricity_usage = elec_end - elec_start
+        electricity_cost = electricity_usage * elec_rate
+        water_cost = water_price * water_occupants
+        total = rent + electricity_cost + water_cost + deposit
+        
+        update_data["electricity_usage"] = electricity_usage
+        update_data["electricity_cost"] = electricity_cost
+        update_data["water_cost"] = water_cost
+        update_data["total"] = total
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.invoices.update_one({"id": invoice_id}, {"$set": update_data})
+    
+    updated_invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    await sio.emit("invoice_updated", updated_invoice)
+    return updated_invoice
+
+@api_router.post("/invoices/{invoice_id}/mark-paid")
+async def mark_invoice_paid(invoice_id: str, user: dict = Depends(get_current_user)):
+    result = await db.invoices.update_one(
+        {"id": invoice_id},
+        {
+            "$set": {
+                "status": "paid",
+                "paid_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    await sio.emit("invoice_status_changed", invoice)
+    return invoice
+
+@api_router.delete("/invoices/{invoice_id}")
+async def delete_invoice(invoice_id: str, user: dict = Depends(get_current_user)):
+    result = await db.invoices.delete_one({"id": invoice_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    await sio.emit("invoice_deleted", {"id": invoice_id})
+    return {"message": "Invoice deleted successfully"}
+
+# PDF Generation
+@api_router.get("/invoices/{invoice_id}/pdf")
+async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current_user)):
+    invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#020617'),
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    
+    story = []
+    
+    # Title
+    story.append(Paragraph("INVOICE", title_style))
+    story.append(Spacer(1, 0.2 * inch))
+    
+    # Invoice details
+    invoice_info = [
+        ["Invoice Number:", invoice["serial_number"]],
+        ["Date:", datetime.fromisoformat(invoice["created_at"]).strftime("%d/%m/%Y")],
+        ["Tenant:", invoice["tenant_name"]],
+        ["Room:", invoice["room_number"]],
+        ["Period:", f"{invoice['month']:02d}/{invoice['year']}"],
+        ["Currency:", invoice["currency"]]
+    ]
+    
+    info_table = Table(invoice_info, colWidths=[2 * inch, 4 * inch])
+    info_table.setStyle(TableStyle([
+        ('FONT', (0, 0), (-1, -1), 'Helvetica', 10),
+        ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    story.append(info_table)
+    story.append(Spacer(1, 0.3 * inch))
+    
+    # Billing breakdown
+    billing_data = [
+        ["Description", "Details", "Amount"],
+        ["Rent", "-", f"{invoice['rent']:,.2f}"],
+        ["Electricity", f"{invoice['electricity_start']} → {invoice['electricity_end']} kWh × {invoice['electricity_rate']}", f"{invoice['electricity_cost']:,.2f}"],
+        ["Water", f"{invoice['water_occupants']} occupants × {invoice['water_price']}", f"{invoice['water_cost']:,.2f}"],
+        ["Deposit", "-", f"{invoice['deposit']:,.2f}"],
+        ["", "TOTAL", f"{invoice['total']:,.2f}"]
+    ]
+    
+    billing_table = Table(billing_data, colWidths=[2 * inch, 2.5 * inch, 1.5 * inch])
+    billing_table.setStyle(TableStyle([
+        ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 11),
+        ('FONT', (0, 1), (-1, -2), 'Helvetica', 10),
+        ('FONT', (1, -1), (-1, -1), 'Helvetica-Bold', 12),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
+        ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+        ('ALIGN', (1, -1), (1, -1), 'RIGHT'),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F1F5F9')),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F8FAFC')),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E2E8F0')),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    story.append(billing_table)
+    
+    # Notes if any
+    if invoice.get("notes"):
+        story.append(Spacer(1, 0.3 * inch))
+        notes_style = ParagraphStyle('Notes', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#475569'))
+        story.append(Paragraph(f"<b>Notes:</b> {invoice['notes']}", notes_style))
+    
+    # Status
+    story.append(Spacer(1, 0.3 * inch))
+    status_color = "#16A34A" if invoice["status"] == "paid" else "#EAB308" if invoice["status"] == "pending" else "#DC2626"
+    status_style = ParagraphStyle('Status', parent=styles['Normal'], fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
+    story.append(Paragraph(f"<b>Status: {invoice['status'].upper()}</b>", status_style))
+    
+    doc.build(story)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=invoice_{invoice['serial_number']}.pdf"}
+    )
+
+# Settings endpoints
+@api_router.get("/settings")
+async def get_settings(user: dict = Depends(get_current_user)):
+    settings = await db.settings.find_one({"user_id": user["id"]}, {"_id": 0})
+    if not settings:
+        settings = {
+            "user_id": user["id"],
+            "default_currency": "IDR",
+            "default_language": "id"
+        }
+        await db.settings.insert_one(settings)
+    return settings
+
+@api_router.put("/settings")
+async def update_settings(data: SettingsUpdate, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    await db.settings.update_one(
+        {"user_id": user["id"]},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    settings = await db.settings.find_one({"user_id": user["id"]}, {"_id": 0})
+    return settings
+
+# Dashboard stats
+@api_router.get("/dashboard/stats")
+async def get_dashboard_stats(user: dict = Depends(get_current_user)):
+    total_tenants = await db.tenants.count_documents({"status": "active"})
+    total_invoices = await db.invoices.count_documents({})
+    pending_invoices = await db.invoices.count_documents({"status": "pending"})
+    overdue_invoices = await db.invoices.count_documents({"status": "overdue"})
+    
+    # Calculate total uncollected
+    pipeline = [
+        {"$match": {"status": {"$in": ["pending", "overdue"]}}},
+        {"$group": {"_id": None, "total": {"$sum": "$total"}}}
+    ]
+    uncollected = await db.invoices.aggregate(pipeline).to_list(1)
+    total_uncollected = uncollected[0]["total"] if uncollected else 0
+    
+    # Recent invoices
+    recent_invoices = await db.invoices.find({}, {"_id": 0}).sort("created_at", -1).limit(5).to_list(5)
+    
+    return {
+        "total_tenants": total_tenants,
+        "total_invoices": total_invoices,
+        "pending_invoices": pending_invoices,
+        "overdue_invoices": overdue_invoices,
+        "total_uncollected": total_uncollected,
+        "recent_invoices": recent_invoices
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
 
+# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Admin seeding
+async def seed_admin():
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@kostcharge.com")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    
+    existing = await db.users.find_one({"email": admin_email})
+    if existing is None:
+        hashed = hash_password(admin_password)
+        await db.users.insert_one({
+            "email": admin_email,
+            "password_hash": hashed,
+            "name": "Admin",
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc)
+        })
+    elif not verify_password(admin_password, existing["password_hash"]):
+        await db.users.update_one(
+            {"email": admin_email},
+            {"$set": {"password_hash": hash_password(admin_password)}}
+        )
+    
+    # Write test credentials
+    os.makedirs("/app/memory", exist_ok=True)
+    with open("/app/memory/test_credentials.md", "w") as f:
+        f.write("# Test Credentials\n\n")
+        f.write("## Admin Account\n")
+        f.write(f"- Email: {admin_email}\n")
+        f.write(f"- Password: {admin_password}\n")
+        f.write(f"- Role: admin\n\n")
+        f.write("## Auth Endpoints\n")
+        f.write("- POST /api/auth/register\n")
+        f.write("- POST /api/auth/login\n")
+        f.write("- GET /api/auth/me\n")
+        f.write("- POST /api/auth/logout\n")
+
+# Create indexes
+async def create_indexes():
+    await db.users.create_index("email", unique=True)
+    await db.login_attempts.create_index("identifier")
+    await db.tenants.create_index("id", unique=True)
+    await db.invoices.create_index("id", unique=True)
+    await db.invoices.create_index("serial_number", unique=True)
+
+@app.on_event("startup")
+async def startup_event():
+    await seed_admin()
+    await create_indexes()
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
+
+# Socket.IO events
+@sio.event
+async def connect(sid, environ):
+    print(f"Client connected: {sid}")
+
+@sio.event
+async def disconnect(sid):
+    print(f"Client disconnected: {sid}")
 
 # Configure logging
 logging.basicConfig(
@@ -83,7 +735,3 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
