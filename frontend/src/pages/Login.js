@@ -53,11 +53,17 @@ const Login = () => {
       
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
-          <div className="mb-8">
-            <h1 className="text-4xl font-black tracking-tight text-slate-950 mb-2">
-              KostCharge
+          <div className="mb-8 text-center">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_kostcharge/artifacts/jthn87d6_ppt.png" 
+              alt="Rent Room Logo" 
+              className="h-24 w-24 mx-auto mb-4 object-contain"
+            />
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 mb-2">
+              Rent Room
             </h1>
-            <p className="text-slate-500">
+            <p className="text-slate-600 text-sm">Phnom Pich Thmei</p>
+            <p className="text-slate-500 mt-4">
               {isLogin ? t('login') : t('register')} {t('dashboard').toLowerCase()}
             </p>
           </div>

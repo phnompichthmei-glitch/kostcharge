@@ -44,7 +44,14 @@ const Layout = ({ children }) => {
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-black tracking-tight text-slate-950">KostCharge</h1>
+            <div className="flex items-center space-x-3">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_kostcharge/artifacts/jthn87d6_ppt.png" 
+                alt="Rent Room Phnom Pich Thmei Logo" 
+                className="h-12 w-12 object-contain"
+              />
+              <h1 className="text-xl font-black tracking-tight text-slate-950">Rent Room</h1>
+            </div>
             <nav className="hidden md:flex space-x-1">
               {menuItems.map((item) => {
                 const Icon = item.icon;

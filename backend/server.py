@@ -21,9 +21,10 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+import requests
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -534,6 +535,18 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     )
     
     story = []
+    
+    # Logo
+    try:
+        logo_url = "https://customer-assets.emergentagent.com/job_kostcharge/artifacts/jthn87d6_ppt.png"
+        logo_response = requests.get(logo_url, timeout=5)
+        if logo_response.status_code == 200:
+            logo_buffer = BytesIO(logo_response.content)
+            logo = Image(logo_buffer, width=1.2*inch, height=1.2*inch)
+            story.append(logo)
+            story.append(Spacer(1, 0.1 * inch))
+    except Exception as e:
+        print(f"Could not load logo: {e}")
     
     # Title
     story.append(Paragraph("INVOICE", title_style))
