@@ -1,0 +1,28 @@
+{
+  "summary": "Backend PDF generation tested for zh/km/en/id. Chinese fix VERIFIED WORKING (no black boxes, all target chars 发票/租金/电费/水费/押金/总计/状态/待付 render correctly). English & Indonesian unaffected and working. Khmer PDF is BROKEN - STSong-Light is a Simplified Chinese CID font and does NOT contain Khmer glyphs; Khmer Unicode codepoints are being mapped to arbitrary Chinese glyphs (extracted text shows garbled CJK chars like 鰗耗餗鐗輗 instead of វិក្កយបត្រ/ថ្លៃជួល).",
+  "tested_scope": ["backend", "integration"],
+  "passed": [
+    "Login admin@kostcharge.com works, cookie auth persists",
+    "PUT /api/settings default_language switches per-user language",
+    "GET /api/invoices/{id}/pdf returns 200 application/pdf for zh/km/en/id",
+    "Chinese (zh) PDF: 发票, 租金, 电费, 水费, 押金, 总计, 状态, 待付 all present. NO black boxes / no tofu / no (cid:) markers",
+    "English (en) PDF: INVOICE, Rent, Electricity, Water, Deposit, TOTAL, PENDING all present",
+    "Indonesian (id) PDF: TAGIHAN, Sewa, Listrik, Air, Deposit, TOTAL, PENDING all present",
+    "$ currency symbol renders in all PDFs; billing math correct (Rent $130.00, Electricity 71 kWh × $0.375 = $26.62, Water 2 × $5 = $10.00, Total $166.62)"
+  ],
+  "failed": [
+    {
+      "area": "PDF font / Khmer language",
+      "issue": "Khmer PDF renders wrong glyphs (Chinese CJK characters) instead of Khmer script. STSong-Light CID font used for both zh and km (server.py L640: use_cjk_font = lang in ['zh','km']) does not contain Khmer glyphs - Khmer Unicode codepoints get mapped to arbitrary Chinese ideographs.",
+      "evidence": "pdfplumber text extraction of inv_km.pdf: header renders as '鰗耗耗餗鐗輗' instead of 'វិក្កយបត្រ'; 'ថ្លៃជួល' renders as '逗鬗蜗'; all expected Khmer strings MISSING from PDF text layer. HTTP 200/pdf but content wrong.",
+      "priority": "HIGH"
+    }
+  ],
+  "action_items": [
+    "Khmer requires a font that actually contains Khmer glyphs. ReportLab has no built-in CID font for Khmer. Register a TTF such as NotoSansKhmer-Regular.ttf via TTFont (Khmer TTFs are TrueType-outline, so TTFont works - unlike Noto Sans CJK). Then in generate_invoice_pdf branch base_font/bold_font on lang: 'STSong-Light' for zh, 'NotoSansKhmer' for km, Helvetica otherwise.",
+    "Alternative: ship the Noto Sans Khmer .ttf under /app/backend/fonts/ and pdfmetrics.registerFont(TTFont('NotoKhmer', 'fonts/NotoSansKhmer-Regular.ttf')) at startup."
+  ],
+  "success_rate": {"backend": "75% (3 of 4 languages)", "frontend": "not tested"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

@@ -11,6 +11,7 @@ bidict==0.23.1
 black==26.5.1
 boto3==1.43.39
 botocore==1.43.39
+brotli==1.2.0
 certifi==2026.6.17
 cffi==2.0.0
 charset-normalizer==3.4.7
@@ -26,6 +27,7 @@ fastapi==0.110.1
 fastuuid==0.14.0
 filelock==3.29.4
 flake8==7.3.0
+fonttools==4.63.0
 frozenlist==1.8.0
 fsspec==2026.6.0
 google-ai-generativelanguage==0.6.15
@@ -71,6 +73,7 @@ packaging==26.2
 pandas==3.0.3
 passlib==1.7.4
 pathspec==1.1.1
+pdf2image==1.17.0
 pillow==12.3.0
 platformdirs==4.10.0
 pluggy==1.6.0

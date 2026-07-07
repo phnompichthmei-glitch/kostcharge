@@ -24,7 +24,16 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 import requests
+
+# Register Unicode CID fonts for Chinese/Japanese/Korean support
+try:
+    pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))  # Simplified Chinese
+    print("✓ Chinese CID font registered successfully")
+except Exception as e:
+    print(f"Warning: Could not register Chinese font: {e}")
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -627,11 +636,17 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
     
+    # Use Chinese CID font for zh and km languages
+    use_cjk_font = lang in ['zh', 'km']
+    base_font = 'STSong-Light' if use_cjk_font else 'Helvetica'
+    bold_font = 'STSong-Light' if use_cjk_font else 'Helvetica-Bold'
+    
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=24,
+        fontName=bold_font,
         textColor=colors.HexColor('#020617'),
         spaceAfter=30,
         alignment=TA_CENTER
@@ -667,8 +682,8 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     
     info_table = Table(invoice_info, colWidths=[2 * inch, 4 * inch])
     info_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, -1), 'Helvetica', 10),
-        ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10),
+        ('FONT', (0, 0), (-1, -1), base_font, 10),
+        ('FONT', (0, 0), (0, -1), bold_font, 10),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
@@ -689,9 +704,9 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     
     billing_table = Table(billing_data, colWidths=[2 * inch, 2.5 * inch, 1.5 * inch])
     billing_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 11),
-        ('FONT', (0, 1), (-1, -2), 'Helvetica', 10),
-        ('FONT', (1, -1), (-1, -1), 'Helvetica-Bold', 12),
+        ('FONT', (0, 0), (-1, 0), bold_font, 11),
+        ('FONT', (0, 1), (-1, -2), base_font, 10),
+        ('FONT', (1, -1), (-1, -1), bold_font, 12),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
         ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
         ('ALIGN', (1, -1), (1, -1), 'RIGHT'),
@@ -706,13 +721,13 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     # Notes if any
     if invoice.get("notes"):
         story.append(Spacer(1, 0.3 * inch))
-        notes_style = ParagraphStyle('Notes', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#475569'))
+        notes_style = ParagraphStyle('Notes', parent=styles['Normal'], fontName=base_font, fontSize=9, textColor=colors.HexColor('#475569'))
         story.append(Paragraph(f"<b>{t['notes']}</b> {invoice['notes']}", notes_style))
     
     # Status
     story.append(Spacer(1, 0.3 * inch))
     status_color = "#16A34A" if invoice["status"] == "paid" else "#EAB308" if invoice["status"] == "pending" else "#DC2626"
-    status_style = ParagraphStyle('Status', parent=styles['Normal'], fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
+    status_style = ParagraphStyle('Status', parent=styles['Normal'], fontName=bold_font, fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
     status_text = t["paid"] if invoice["status"] == "paid" else t["pending"] if invoice["status"] == "pending" else t["overdue"]
     story.append(Paragraph(f"<b>{t['status']} {status_text}</b>", status_style))
     
