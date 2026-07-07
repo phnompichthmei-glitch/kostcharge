@@ -1,0 +1,127 @@
+{
+  "theme": "LIGHT",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "design_philosophy": {
+    "goal": "Information clarity and functional authority. The dashboard must answer 'Is everything okay?' instantly with high-contrast, strict grids.",
+    "emotion": "Objective, rigid, and professional.",
+    "key_principles": [
+      "No full-screen gradients. Use monochrome with strict functional colors.",
+      "Hard borders (1px) for UI cards, minimal border-radius (0px to 2px max).",
+      "Top-left priority for main metrics.",
+      "Use monospaced fonts for numerical data and serial numbers to ensure perfect alignment."
+    ]
+  },
+  "colors": {
+    "background": {
+      "default": "#FFFFFF",
+      "surface": "#F8FAFC",
+      "surface_alt": "#F1F5F9"
+    },
+    "text": {
+      "primary": "#020617",
+      "secondary": "#475569",
+      "muted": "#94A3B8"
+    },
+    "border": {
+      "default": "#E2E8F0",
+      "active": "#020617"
+    },
+    "status": {
+      "paid": "#16A34A",
+      "pending": "#EAB308",
+      "overdue": "#DC2626"
+    },
+    "primary": "#002FA7",
+    "primary_hover": "#001D6B"
+  },
+  "typography": {
+    "font_families": {
+      "heading": "Chivo",
+      "body": "Chivo",
+      "mono": "IBM Plex Mono"
+    },
+    "sizes": {
+      "h1": "text-4xl tracking-tight font-black",
+      "h2": "text-2xl tracking-tight font-bold",
+      "h3": "text-xl font-bold",
+      "body": "text-base font-normal",
+      "small": "text-sm text-slate-500",
+      "data": "text-base font-mono tracking-tight"
+    }
+  },
+  "layout_and_spacing": {
+    "container_padding": "p-6 sm:p-8 md:p-12",
+    "card_padding": "p-6",
+    "gap": "gap-6",
+    "radius": "rounded-sm",
+    "shadow": "shadow-sm",
+    "grid": {
+      "dashboard": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+      "forms": "grid-cols-1 md:grid-cols-2 gap-6"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-slate-950 text-white hover:bg-slate-800 rounded-sm font-medium transition-colors duration-200",
+      "outline": "border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 rounded-sm font-medium transition-colors duration-200 text-slate-900"
+    },
+    "cards": "bg-white border border-slate-200 rounded-sm shadow-sm",
+    "inputs": "w-full border border-slate-200 rounded-sm px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:border-transparent transition-all duration-200",
+    "table": "w-full text-left border-collapse",
+    "th": "border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50",
+    "td": "border-b border-slate-200 py-3 px-4 text-slate-700"
+  },
+  "motion": {
+    "hover": "transition-all duration-200 ease-in-out",
+    "active": "active:scale-[0.98]",
+    "list_stagger": "animate-in fade-in slide-in-from-bottom-2 duration-300"
+  },
+  "icons": {
+    "library": "lucide-react",
+    "size": "w-5 h-5",
+    "stroke": "1.5"
+  },
+  "media": {
+    "logos": [
+      {
+        "url": "https://images.unsplash.com/photo-1760037028517-e5cc6e3ebd3e",
+        "category": "logo",
+        "description": "App Logo placeholder"
+      }
+    ],
+    "backgrounds": [
+      {
+        "url": "https://images.pexels.com/photos/11346374/pexels-photo-11346374.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "auth_background",
+        "description": "Modern residential complex used for login/register page background split layout"
+      }
+    ],
+    "avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
+        "category": "user_avatar",
+        "description": "Tenant or Admin Avatar Male"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1506863530036-1efeddceb993",
+        "category": "user_avatar",
+        "description": "Tenant or Admin Avatar Female"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Use Lucide-React for all icons.",
+    "Implement the 'Swiss Brutalist' vibe. High contrast, sharp edges (rounded-sm max), generous inner padding for cards (p-6).",
+    "Use Shadcn components for complex interactions (Tables, Modals, Select), but override default radius to 'rounded-sm' and shadows to flat minimalist 'shadow-sm'. Use plain HTML for standard layouts.",
+    "For financial numbers, invoice serials (INV-YYYYMM-XXXX), and meter readings, MUST use the `font-mono` family (IBM Plex Mono) for perfect alignment.",
+    "Place the North Star Metric (Total Uncollected or Monthly Revenue) at the top-left of the Dashboard Grid.",
+    "Use status colors strictly for status indicators (Paid=Green, Pending=Yellow, Overdue=Red).",
+    "For PDF generation, ensure a clean layout matching the brand, clearly showing the breakdown: Rent, Electricity (End-Start * Rate), Water, Deposit, Total.",
+    "Implement Multi-language support (ID, EN, CN, KH) with a dropdown switcher in the header.",
+    "Implement Multi-currency formatting.",
+    "Use JWT-based custom auth. The login page should use a split layout with the auth_background image.",
+    "Implement WebSockets for real-time status updates on the dashboard table.",
+    "All interactive elements MUST include data-testid attributes (e.g., data-testid='submit-billing-btn').",
+    "Use .js files instead of .tsx where possible."
+  ]
+}
