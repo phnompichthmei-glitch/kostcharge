@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
@@ -16,28 +16,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('IDR');
 
-  useEffect(() => {
-    loadData();
-    loadSettings();
-  }, []);
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('invoice_created', () => loadData());
-      socket.on('invoice_updated', () => loadData());
-      socket.on('invoice_status_changed', () => loadData());
-      socket.on('invoice_deleted', () => loadData());
-      
-      return () => {
-        socket.off('invoice_created');
-        socket.off('invoice_updated');
-        socket.off('invoice_status_changed');
-        socket.off('invoice_deleted');
-      };
-    }
-  }, [socket]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/dashboard/stats`, { withCredentials: true });
       setStats(data);
@@ -46,9 +25,9 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/settings`, { withCredentials: true });
       setCurrency(data.default_currency || 'IDR');
@@ -58,7 +37,28 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error loading settings:', error);
     }
-  };
+  }, [i18n]);
+
+  useEffect(() => {
+    loadData();
+    loadSettings();
+  }, [loadData, loadSettings]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('invoice_created', loadData);
+      socket.on('invoice_updated', loadData);
+      socket.on('invoice_status_changed', loadData);
+      socket.on('invoice_deleted', loadData);
+      
+      return () => {
+        socket.off('invoice_created');
+        socket.off('invoice_updated');
+        socket.off('invoice_status_changed');
+        socket.off('invoice_deleted');
+      };
+    }
+  }, [socket, loadData]);
 
   if (loading) {
     return (
@@ -109,11 +109,11 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((card, index) => {
+        {statCards.map((card) => {
           const Icon = card.icon;
           return (
             <div
-              key={index}
+              key={card.testId}
               data-testid={card.testId}
               className="bg-white border border-slate-200 rounded-sm shadow-sm p-6 transition-all duration-200 hover:shadow-md"
             >

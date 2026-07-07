@@ -27,6 +27,9 @@ export const SocketProvider = ({ children }) => {
       return () => {
         newSocket.close();
       };
+    } else if (socket) {
+      socket.close();
+      setSocket(null);
     }
   }, [user]);
 
