@@ -328,7 +328,11 @@ async def create_tenant(data: TenantCreate, user: dict = Depends(get_current_use
     tenant_doc["created_at"] = datetime.now(timezone.utc).isoformat()
     tenant_doc["created_by"] = user["id"]
     
-    await db.tenants.insert_one(tenant_doc)
+    # Create a copy for insertion
+    insert_doc = tenant_doc.copy()
+    await db.tenants.insert_one(insert_doc)
+    
+    # Return the clean doc without _id
     await sio.emit("tenant_created", tenant_doc)
     return tenant_doc
 
@@ -429,7 +433,11 @@ async def create_invoice(data: InvoiceCreate, user: dict = Depends(get_current_u
         "created_by": user["id"]
     }
     
-    await db.invoices.insert_one(invoice_doc)
+    # Create a copy for insertion
+    insert_doc = invoice_doc.copy()
+    await db.invoices.insert_one(insert_doc)
+    
+    # Return the clean doc without _id
     await sio.emit("invoice_created", invoice_doc)
     return invoice_doc
 
@@ -610,7 +618,9 @@ async def get_settings(user: dict = Depends(get_current_user)):
             "default_currency": "IDR",
             "default_language": "id"
         }
-        await db.settings.insert_one(settings)
+        # Create a copy for insertion
+        insert_doc = settings.copy()
+        await db.settings.insert_one(insert_doc)
     return settings
 
 @api_router.put("/settings")
@@ -696,7 +706,7 @@ async def seed_admin():
         f.write("## Admin Account\n")
         f.write(f"- Email: {admin_email}\n")
         f.write(f"- Password: {admin_password}\n")
-        f.write(f"- Role: admin\n\n")
+        f.write("- Role: admin\n\n")
         f.write("## Auth Endpoints\n")
         f.write("- POST /api/auth/register\n")
         f.write("- POST /api/auth/login\n")

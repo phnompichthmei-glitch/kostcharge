@@ -1,0 +1,34 @@
+{
+  "summary": "Full E2E backend + frontend testing for KostCharge boarding house billing app. All critical flows verified: auth, tenant CRUD, invoice creation with auto-calculation, serial numbering, PDF generation, mark-as-paid, dashboard stats, filtering, settings, and UI navigation with i18n. No blocker bugs found. Previously reported ObjectId serialization fixes are confirmed working.",
+  "tested_scope": ["frontend", "backend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login returns 200 with user and sets HttpOnly cookies",
+    "GET /api/auth/me returns admin user profile",
+    "POST /api/tenants creates tenant successfully (id: 6a4d268343deb7e474a3e1fd, name: E2E Tenant A)",
+    "GET /api/tenants lists all tenants",
+    "POST /api/invoices creates invoice with correct auto-calculation: electricity_cost=(150-100)*1500=75000, water_cost=2*30000=60000, total=1500000+75000+60000+0=1635000",
+    "Serial numbering increments correctly: INV-202607-0001, INV-202607-0002, INV-202607-0003",
+    "GET /api/invoices/{id}/pdf returns valid PDF (%PDF-1.4 magic, 2503 bytes)",
+    "POST /api/invoices/{id}/mark-paid changes status pending -> paid",
+    "GET /api/dashboard/stats reflects updated counts (pending decreased from 3 to 2, uncollected recalculated from 4905000 -> 3270000)",
+    "GET /api/invoices?status=paid filter returns only paid invoices",
+    "GET /api/settings returns 200 with default_currency=IDR, default_language=id",
+    "Frontend login flow works, redirects to /dashboard",
+    "Dashboard UI renders stats card (Rp 3.270.000, 3 Total Penyewa, 2 Pending, 0 Overdue)",
+    "Tenants page (/tenants) displays all 3 tenants incl. E2E Tenant A - A201",
+    "Invoices page (/invoices) shows all 3 invoices with serials and status badges (Lunas/Pending)",
+    "Indonesian i18n active by default (Penyewa, Tagihan, Pengaturan, Lunas, Kata Sandi, Masuk)",
+    "Navigation between Dashboard/Penyewa/Tagihan/Pengaturan works"
+  ],
+  "failed": [],
+  "notes": [
+    "Original test request used PATCH /api/invoices/{id}/status but actual endpoint is POST /api/invoices/{id}/mark-paid. Endpoint works correctly, just different signature - not a bug.",
+    "Two 401 console errors on landing page are expected (initial /api/auth/me check before login cookies present).",
+    "WebSocket real-time sync, multi-currency formatting (USD/CNY/KHR), language switching to EN/ZH/KM, edit/delete tenant, and logout/re-login session persistence were NOT deeply tested in this latency-sensitive pass - deferred to full testing agent.",
+    "Test credentials read from /app/memory/test_credentials.md (admin@kostcharge.com / admin123) - working."
+  ],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
