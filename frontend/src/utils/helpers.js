@@ -1,18 +1,9 @@
 export const formatCurrency = (amount, currency = 'IDR') => {
-  const formats = {
-    IDR: { symbol: 'Rp', locale: 'id-ID' },
-    USD: { symbol: '$', locale: 'en-US' },
-    CNY: { symbol: '¥', locale: 'zh-CN' },
-    KHR: { symbol: '៛', locale: 'km-KH' }
-  };
-
-  const format = formats[currency] || formats.IDR;
-  return new Intl.NumberFormat(format.locale, {
-    style: 'currency',
-    currency: currency,
+  // Always use $ symbol for all currencies
+  return `$ ${amount.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
-  }).format(amount);
+  })}`;
 };
 
 export const getMonthName = (month, language = 'id') => {

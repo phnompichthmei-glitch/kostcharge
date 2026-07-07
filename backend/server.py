@@ -680,11 +680,11 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     # Billing breakdown
     billing_data = [
         [t["description"], t["details"], t["amount"]],
-        [t["rent"], "-", f"{invoice['rent']:,.2f}"],
-        [t["electricity"], f"{invoice['electricity_start']} → {invoice['electricity_end']} kWh × {invoice['electricity_rate']}", f"{invoice['electricity_cost']:,.2f}"],
-        [t["water"], f"{invoice['water_occupants']} {t['occupants']} × {invoice['water_price']}", f"{invoice['water_cost']:,.2f}"],
-        [t["deposit"], "-", f"{invoice['deposit']:,.2f}"],
-        ["", t["total"], f"{invoice['total']:,.2f}"]
+        [t["rent"], "-", f"$ {invoice['rent']:,.2f}"],
+        [t["electricity"], f"{invoice['electricity_start']} → {invoice['electricity_end']} kWh × {invoice['electricity_rate']}", f"$ {invoice['electricity_cost']:,.2f}"],
+        [t["water"], f"{invoice['water_occupants']} {t['occupants']} × {invoice['water_price']}", f"$ {invoice['water_cost']:,.2f}"],
+        [t["deposit"], "-", f"$ {invoice['deposit']:,.2f}"],
+        ["", t["total"], f"$ {invoice['total']:,.2f}"]
     ]
     
     billing_table = Table(billing_data, colWidths=[2 * inch, 2.5 * inch, 1.5 * inch])
