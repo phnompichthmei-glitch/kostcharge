@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Invoices = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const socket = useSocket();
   const [invoices, setInvoices] = useState([]);
@@ -71,6 +71,7 @@ const Invoices = () => {
   const downloadPDF = async (invoiceId, serialNumber) => {
     try {
       const response = await axios.get(`${API}/invoices/${invoiceId}/pdf`, {
+        params: { lang: i18n.language },
         withCredentials: true,
         responseType: 'blob'
       });

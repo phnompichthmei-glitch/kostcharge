@@ -630,7 +630,7 @@ async def delete_invoice(invoice_id: str, user: dict = Depends(get_current_user)
 
 # PDF Generation
 @api_router.get("/invoices/{invoice_id}/pdf")
-async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current_user)):
+async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user: dict = Depends(get_current_user)):
     invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -639,9 +639,10 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     if invoice.get("status") == "draft":
         raise HTTPException(status_code=400, detail="Cannot generate PDF for draft invoice. Please finalize the invoice first.")
     
-    # Get user language preference from settings
-    settings = await db.settings.find_one({"user_id": user["id"]}, {"_id": 0})
-    lang = settings.get("default_language", "id") if settings else "id"
+    # Priority: 1. Query param from frontend, 2. User settings from DB, 3. Default 'id'
+    if not lang:
+        settings = await db.settings.find_one({"user_id": user["id"]}, {"_id": 0})
+        lang = settings.get("default_language", "id") if settings else "id"
     
     # Translation dictionary for PDF
     translations = {

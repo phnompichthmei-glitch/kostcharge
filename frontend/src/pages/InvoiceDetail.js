@@ -46,6 +46,7 @@ const InvoiceDetail = () => {
   const downloadPDF = async () => {
     try {
       const response = await axios.get(`${API}/invoices/${id}/pdf`, {
+        params: { lang: i18n.language },
         withCredentials: true,
         responseType: 'blob'
       });
