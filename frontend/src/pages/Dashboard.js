@@ -101,59 +101,94 @@ const Dashboard = () => {
 
   return (
     <div data-testid="dashboard-page">
-      <div className="mb-8">
-        <h1 className="text-4xl font-black tracking-tight text-slate-950 mb-2">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 mb-2">
           {t('dashboard')}
         </h1>
-        <p className="text-slate-500">Boarding house billing management</p>
+        <p className="text-sm sm:text-base text-slate-500">Boarding house billing management</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
             <div
               key={card.testId}
               data-testid={card.testId}
-              className="bg-white border border-slate-200 rounded-sm shadow-sm p-6 transition-all duration-200 hover:shadow-md"
+              className="bg-white border border-slate-200 rounded-sm shadow-sm p-5 sm:p-6 transition-all duration-200 hover:shadow-md active:scale-98"
             >
-              <div className="flex items-start justify-between mb-4">
-                <Icon className={`w-5 h-5 ${card.color}`} strokeWidth={1.5} />
+              <div className="flex items-start justify-between mb-3 sm:mb-4">
+                <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${card.color}`} strokeWidth={1.5} />
               </div>
-              <div className="font-mono text-2xl font-bold text-slate-950 mb-1">
+              <div className="font-mono text-xl sm:text-2xl font-bold text-slate-950 mb-1">
                 {card.value}
               </div>
-              <div className="text-sm text-slate-500">{card.label}</div>
+              <div className="text-xs sm:text-sm text-slate-500">{card.label}</div>
             </div>
           );
         })}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm">
-        <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-950">{t('recentInvoices')}</h2>
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+        <div className="border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-950">{t('recentInvoices')}</h2>
           <button
             onClick={() => navigate('/invoices')}
-            className="text-sm text-slate-600 hover:text-slate-950 font-medium transition-colors"
+            className="text-xs sm:text-sm text-slate-600 hover:text-slate-950 font-medium transition-colors px-3 py-1.5 hover:bg-slate-50 rounded-sm"
           >
             View all
           </button>
         </div>
         
-        <div className="overflow-x-auto">
+        {/* Mobile: Card View */}
+        <div className="block sm:hidden">
+          {stats?.recent_invoices?.length > 0 ? (
+            <div className="divide-y divide-slate-200">
+              {stats.recent_invoices.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  onClick={() => navigate(`/invoices/${invoice.id}`)}
+                  className="p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="font-mono text-sm font-medium text-slate-950">
+                      {invoice.serial_number}
+                    </div>
+                    <span className={`inline-block px-2 py-1 rounded-sm text-xs font-bold text-white ${getStatusColor(invoice.status)}`}>
+                      {t(invoice.status)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-700 mb-1">
+                    {invoice.tenant_name} - {invoice.room_number}
+                  </div>
+                  <div className="font-mono text-base font-bold text-slate-950">
+                    {formatCurrency(invoice.total, invoice.currency)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-sm text-slate-500">
+              No invoices yet
+            </div>
+          )}
+        </div>
+
+        {/* Desktop/Tablet: Table View */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr>
-                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">
+                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-sm">
                   {t('serialNumber')}
                 </th>
-                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">
+                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-sm">
                   {t('tenant')}
                 </th>
-                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">
+                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-sm">
                   {t('total')}
                 </th>
-                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">
+                <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-sm">
                   {t('status')}
                 </th>
               </tr>
@@ -166,13 +201,13 @@ const Dashboard = () => {
                     className="hover:bg-slate-50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/invoices/${invoice.id}`)}
                   >
-                    <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">
+                    <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono text-sm">
                       {invoice.serial_number}
                     </td>
-                    <td className="border-b border-slate-200 py-3 px-4 text-slate-700">
+                    <td className="border-b border-slate-200 py-3 px-4 text-slate-700 text-sm">
                       {invoice.tenant_name} - {invoice.room_number}
                     </td>
-                    <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">
+                    <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono text-sm">
                       {formatCurrency(invoice.total, invoice.currency)}
                     </td>
                     <td className="border-b border-slate-200 py-3 px-4">
