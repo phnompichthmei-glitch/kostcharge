@@ -228,7 +228,7 @@ const EditInvoice = () => {
 
         <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
           <h2 className="text-lg sm:text-xl font-bold text-slate-950 mb-4">Billing Components</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="space-y-4">
             <div>
               <Label htmlFor="rent">{t('rent')}</Label>
               <Input
@@ -241,28 +241,31 @@ const EditInvoice = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="elec_start">{t('electricityStart')}</Label>
-                <Input
-                  id="elec_start"
-                  type="number"
-                  step="0.01"
-                  data-testid="electricity-start-input"
-                  value={formData.electricity_start}
-                  onChange={(e) => setFormData({ ...formData, electricity_start: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="elec_end">{t('electricityEnd')}</Label>
-                <Input
-                  id="elec_end"
-                  type="number"
-                  step="0.01"
-                  data-testid="electricity-end-input"
-                  value={formData.electricity_end}
-                  onChange={(e) => setFormData({ ...formData, electricity_end: e.target.value })}
-                />
+            <div>
+              <Label className="block mb-2">Listrik</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="elec_start" className="text-sm text-slate-600">{t('electricityStart')}</Label>
+                  <Input
+                    id="elec_start"
+                    type="number"
+                    step="0.01"
+                    data-testid="electricity-start-input"
+                    value={formData.electricity_start}
+                    onChange={(e) => setFormData({ ...formData, electricity_start: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="elec_end" className="text-sm text-slate-600">{t('electricityEnd')}</Label>
+                  <Input
+                    id="elec_end"
+                    type="number"
+                    step="0.01"
+                    data-testid="electricity-end-input"
+                    value={formData.electricity_end}
+                    onChange={(e) => setFormData({ ...formData, electricity_end: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
 
@@ -282,30 +285,33 @@ const EditInvoice = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="water_occupants">{t('occupants')}</Label>
-                <Input
-                  id="water_occupants"
-                  type="number"
-                  data-testid="water-occupants-input"
-                  value={formData.water_occupants}
-                  onChange={(e) => setFormData({ ...formData, water_occupants: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="water_price">{t('waterPrice')}</Label>
-                <div className="relative">
+            <div>
+              <Label className="block mb-2">Air</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="water_occupants" className="text-sm text-slate-600">{t('occupants')}</Label>
                   <Input
-                    id="water_price"
+                    id="water_occupants"
                     type="number"
-                    step="0.01"
-                    data-testid="water-price-input"
-                    value={formData.water_price}
-                    onChange={(e) => setFormData({ ...formData, water_price: e.target.value })}
-                    className="pr-12"
+                    data-testid="water-occupants-input"
+                    value={formData.water_occupants}
+                    onChange={(e) => setFormData({ ...formData, water_occupants: e.target.value })}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+                </div>
+                <div>
+                  <Label htmlFor="water_price" className="text-sm text-slate-600">{t('waterPrice')}</Label>
+                  <div className="relative">
+                    <Input
+                      id="water_price"
+                      type="number"
+                      step="0.01"
+                      data-testid="water-price-input"
+                      value={formData.water_price}
+                      onChange={(e) => setFormData({ ...formData, water_price: e.target.value })}
+                      className="pr-12"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -322,7 +328,7 @@ const EditInvoice = () => {
               />
             </div>
 
-            <div className="col-span-2">
+            <div>
               <Label htmlFor="notes">{t('notes')}</Label>
               <Textarea
                 id="notes"
