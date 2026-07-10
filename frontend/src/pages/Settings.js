@@ -26,8 +26,10 @@ const Settings = () => {
     try {
       const { data } = await axios.get(`${API}/settings`, { withCredentials: true });
       setSettings(data);
-      if (data.default_language) {
+      // Only change language if different from current to avoid reset
+      if (data.default_language && data.default_language !== i18n.language) {
         i18n.changeLanguage(data.default_language);
+        localStorage.setItem('appLanguage', data.default_language);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -38,13 +40,19 @@ const Settings = () => {
   }, [i18n]);
 
   useEffect(() => {
+    // Check localStorage first before loading from server
+    const savedLang = localStorage.getItem('appLanguage');
+    if (savedLang) {
+      i18n.changeLanguage(savedLang);
+    }
     loadSettings();
-  }, [loadSettings]);
+  }, [loadSettings, i18n]);
 
   const handleSave = async () => {
     try {
       await axios.put(`${API}/settings`, settings, { withCredentials: true });
       i18n.changeLanguage(settings.default_language);
+      localStorage.setItem('appLanguage', settings.default_language);
       toast.success('Settings saved successfully');
     } catch (error) {
       console.error('Error saving settings:', error);

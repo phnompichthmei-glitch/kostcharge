@@ -38,6 +38,7 @@ const Layout = ({ children }) => {
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
+    localStorage.setItem('appLanguage', lng);
   };
 
   return (
