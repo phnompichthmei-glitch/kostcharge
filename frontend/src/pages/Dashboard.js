@@ -31,8 +31,11 @@ const Dashboard = () => {
     try {
       const { data } = await axios.get(`${API}/settings`, { withCredentials: true });
       setCurrency(data.default_currency || 'IDR');
-      if (data.default_language) {
+      // Don't override language if user has manually selected one in localStorage
+      const userSelectedLang = localStorage.getItem('appLanguage');
+      if (data.default_language && !userSelectedLang) {
         i18n.changeLanguage(data.default_language);
+        localStorage.setItem('appLanguage', data.default_language);
       }
     } catch (error) {
       console.error('Error loading settings:', error);

@@ -26,8 +26,9 @@ const Settings = () => {
     try {
       const { data } = await axios.get(`${API}/settings`, { withCredentials: true });
       setSettings(data);
-      // Only change language if different from current to avoid reset
-      if (data.default_language && data.default_language !== i18n.language) {
+      // Don't override if user has localStorage preference (from header dropdown)
+      const userSelectedLang = localStorage.getItem('appLanguage');
+      if (!userSelectedLang && data.default_language) {
         i18n.changeLanguage(data.default_language);
         localStorage.setItem('appLanguage', data.default_language);
       }
@@ -40,13 +41,8 @@ const Settings = () => {
   }, [i18n]);
 
   useEffect(() => {
-    // Check localStorage first before loading from server
-    const savedLang = localStorage.getItem('appLanguage');
-    if (savedLang) {
-      i18n.changeLanguage(savedLang);
-    }
     loadSettings();
-  }, [loadSettings, i18n]);
+  }, [loadSettings]);
 
   const handleSave = async () => {
     try {
