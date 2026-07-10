@@ -40,8 +40,15 @@ except Exception as e:
 try:
     khmer_font_path = '/usr/share/fonts/truetype/khmeros/KhmerOSsiemreap.ttf'
     if os.path.exists(khmer_font_path):
+        from reportlab.lib.fonts import addMapping
         pdfmetrics.registerFont(TTFont('KhmerOS', khmer_font_path))
-        print("✓ Khmer font registered successfully")
+        # Register font family mapping so Paragraph can use it properly
+        # Map all variants (normal, bold, italic, bold-italic) to the same font file
+        addMapping('KhmerOS', 0, 0, 'KhmerOS')  # normal
+        addMapping('KhmerOS', 0, 1, 'KhmerOS')  # italic
+        addMapping('KhmerOS', 1, 0, 'KhmerOS')  # bold
+        addMapping('KhmerOS', 1, 1, 'KhmerOS')  # bold-italic
+        print("✓ Khmer font registered successfully with family mappings")
 except Exception as e:
     print(f"Warning: Could not register Khmer font: {e}")
 
@@ -838,14 +845,22 @@ async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user
     if invoice.get("notes"):
         story.append(Spacer(1, 0.3 * inch))
         notes_style = ParagraphStyle('Notes', parent=styles['Normal'], fontName=base_font, fontSize=9, textColor=colors.HexColor('#475569'))
-        story.append(Paragraph(f"<b>{t['notes']}</b> {invoice['notes']}", notes_style))
+        # For Khmer, avoid using <b> tags as they cause rendering issues
+        if lang == 'km':
+            story.append(Paragraph(f"{t['notes']} {invoice['notes']}", notes_style))
+        else:
+            story.append(Paragraph(f"<b>{t['notes']}</b> {invoice['notes']}", notes_style))
     
     # Status
     story.append(Spacer(1, 0.3 * inch))
     status_color = "#16A34A" if invoice["status"] == "paid" else "#EAB308" if invoice["status"] == "pending" else "#DC2626"
     status_style = ParagraphStyle('Status', parent=styles['Normal'], fontName=bold_font, fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
     status_text = t["paid"] if invoice["status"] == "paid" else t["pending"] if invoice["status"] == "pending" else t["overdue"]
-    story.append(Paragraph(f"<b>{t['status']} {status_text}</b>", status_style))
+    # For Khmer, avoid using <b> tags
+    if lang == 'km':
+        story.append(Paragraph(f"{t['status']} {status_text}", status_style))
+    else:
+        story.append(Paragraph(f"<b>{t['status']} {status_text}</b>", status_style))
     
     doc.build(story)
     buffer.seek(0)
