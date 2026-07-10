@@ -126,31 +126,43 @@ const InvoiceDetail = () => {
                 <tr className="border-b border-slate-200">
                   <td className="py-3 text-slate-700">{t('rent')}</td>
                   <td className="py-3 text-slate-500">-</td>
-                  <td className="py-3 text-right text-slate-950">{formatCurrency(invoice.rent, invoice.currency)}</td>
+                  <td className="py-3 text-right text-slate-950">
+                    {invoice.rent !== null ? formatCurrency(invoice.rent, invoice.currency) : '-'}
+                  </td>
                 </tr>
                 <tr className="border-b border-slate-200">
                   <td className="py-3 text-slate-700">{t('electricity')}</td>
                   <td className="py-3 text-slate-500">
-                    {invoice.electricity_start} → {invoice.electricity_end} kWh × $ {invoice.electricity_rate}
+                    {invoice.electricity_start !== null && invoice.electricity_end !== null && invoice.electricity_rate !== null
+                      ? `${invoice.electricity_start} → ${invoice.electricity_end} kWh × $ ${invoice.electricity_rate}`
+                      : '-'}
                   </td>
-                  <td className="py-3 text-right text-slate-950">{formatCurrency(invoice.electricity_cost, invoice.currency)}</td>
+                  <td className="py-3 text-right text-slate-950">
+                    {invoice.electricity_cost ? formatCurrency(invoice.electricity_cost, invoice.currency) : '-'}
+                  </td>
                 </tr>
                 <tr className="border-b border-slate-200">
                   <td className="py-3 text-slate-700">{t('water')}</td>
                   <td className="py-3 text-slate-500">
-                    {invoice.water_occupants} occupants × $ {invoice.water_price}
+                    {invoice.water_occupants !== null && invoice.water_price !== null
+                      ? `${invoice.water_occupants} occupants × $ ${invoice.water_price}`
+                      : '-'}
                   </td>
-                  <td className="py-3 text-right text-slate-950">{formatCurrency(invoice.water_cost, invoice.currency)}</td>
+                  <td className="py-3 text-right text-slate-950">
+                    {invoice.water_cost ? formatCurrency(invoice.water_cost, invoice.currency) : '-'}
+                  </td>
                 </tr>
                 <tr className="border-b border-slate-200">
                   <td className="py-3 text-slate-700">{t('deposit')}</td>
                   <td className="py-3 text-slate-500">-</td>
-                  <td className="py-3 text-right text-slate-950">{formatCurrency(invoice.deposit, invoice.currency)}</td>
+                  <td className="py-3 text-right text-slate-950">
+                    {invoice.deposit !== null ? formatCurrency(invoice.deposit, invoice.currency) : '-'}
+                  </td>
                 </tr>
                 <tr className="bg-slate-50">
                   <td className="py-4 text-slate-950 font-bold" colSpan="2">TOTAL</td>
                   <td className="py-4 text-right text-slate-950 font-bold text-xl">
-                    {formatCurrency(invoice.total, invoice.currency)}
+                    {formatCurrency(invoice.total || 0, invoice.currency)}
                   </td>
                 </tr>
               </tbody>
@@ -165,25 +177,50 @@ const InvoiceDetail = () => {
           )}
 
           <div className="flex space-x-4">
-            {invoice.status !== 'paid' && (
-              <Button
-                onClick={markAsPaid}
-                data-testid="mark-paid-btn"
-                className="bg-green-600 text-white hover:bg-green-700 rounded-sm"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {t('markAsPaid')}
-              </Button>
+            {invoice.status === 'draft' ? (
+              <>
+                <Button
+                  onClick={() => navigate(`/invoices/edit/${id}`)}
+                  data-testid="edit-draft-btn"
+                  className="bg-blue-600 text-white hover:bg-blue-700 rounded-sm"
+                >
+                  Edit Draft
+                </Button>
+                <Button
+                  onClick={downloadPDF}
+                  data-testid="download-pdf-btn"
+                  variant="outline"
+                  className="border-slate-200 rounded-sm"
+                  disabled
+                  title="PDF cannot be generated for drafts"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {t('downloadPDF')} (Draft)
+                </Button>
+              </>
+            ) : (
+              <>
+                {invoice.status !== 'paid' && (
+                  <Button
+                    onClick={markAsPaid}
+                    data-testid="mark-paid-btn"
+                    className="bg-green-600 text-white hover:bg-green-700 rounded-sm"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    {t('markAsPaid')}
+                  </Button>
+                )}
+                <Button
+                  onClick={downloadPDF}
+                  data-testid="download-pdf-btn"
+                  variant="outline"
+                  className="border-slate-200 rounded-sm"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {t('downloadPDF')}
+                </Button>
+              </>
             )}
-            <Button
-              onClick={downloadPDF}
-              data-testid="download-pdf-btn"
-              variant="outline"
-              className="border-slate-200 rounded-sm"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {t('downloadPDF')}
-            </Button>
           </div>
         </div>
       </div>

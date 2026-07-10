@@ -144,22 +144,23 @@ const Tenants = () => {
 
   return (
     <div data-testid="tenants-page">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-950 mb-2">{t('tenants')}</h1>
-          <p className="text-slate-500">Manage boarding house tenants</p>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 mb-2">{t('tenants')}</h1>
+          <p className="text-sm sm:text-base text-slate-500">Manage boarding house tenants</p>
         </div>
         <Button
           onClick={() => { resetForm(); setShowDialog(true); }}
           data-testid="add-tenant-btn"
-          className="bg-slate-950 text-white hover:bg-slate-800 rounded-sm"
+          className="bg-slate-950 text-white hover:bg-slate-800 rounded-sm w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
           {t('addTenant')}
         </Button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr>
@@ -211,6 +212,61 @@ const Tenants = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {tenants.length > 0 ? (
+          tenants.map((tenant) => (
+            <div key={tenant.id} className="bg-white border border-slate-200 rounded-sm shadow-sm p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h3 className="font-bold text-slate-950 text-lg mb-1">{tenant.name}</h3>
+                  <p className="text-sm text-slate-600">Room {tenant.room_number}</p>
+                </div>
+                <span className={`inline-block px-3 py-1 rounded-sm text-xs font-bold ${tenant.status === 'active' ? 'bg-green-600 text-white' : 'bg-slate-400 text-white'}`}>
+                  {t(tenant.status)}
+                </span>
+              </div>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">{t('contact')}:</span>
+                  <span className="text-slate-700 font-medium">{tenant.contact}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">{t('rentAmount')}:</span>
+                  <span className="text-slate-700 font-mono font-medium">${tenant.rent_amount}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleEdit(tenant)}
+                  data-testid={`edit-tenant-${tenant.id}`}
+                  variant="outline"
+                  className="flex-1"
+                  size="sm"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  {t('edit')}
+                </Button>
+                <Button
+                  onClick={() => handleDelete(tenant.id)}
+                  data-testid={`delete-tenant-${tenant.id}`}
+                  variant="outline"
+                  className="flex-1 text-red-600 hover:bg-red-50"
+                  size="sm"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t('delete')}
+                </Button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-8 text-center text-slate-500">
+            No tenants yet
+          </div>
+        )}
       </div>
 
       <Dialog open={showDialog} onOpenChange={(open) => { if (!open) resetForm(); setShowDialog(open); }}>

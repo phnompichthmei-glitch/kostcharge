@@ -19,6 +19,8 @@ export const getStatusColor = (status) => {
       return 'bg-yellow-600';
     case 'overdue':
       return 'bg-red-600';
+    case 'draft':
+      return 'bg-blue-500';
     default:
       return 'bg-slate-600';
   }

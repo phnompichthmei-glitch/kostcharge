@@ -159,15 +159,16 @@ class InvoiceCreate(BaseModel):
     tenant_id: str
     month: int
     year: int
-    rent: float
-    electricity_start: float
-    electricity_end: float
-    electricity_rate: float
-    water_occupants: int
-    water_price: float
-    deposit: float
+    rent: Optional[float] = None
+    electricity_start: Optional[float] = None
+    electricity_end: Optional[float] = None
+    electricity_rate: Optional[float] = None
+    water_occupants: Optional[int] = None
+    water_price: Optional[float] = None
+    deposit: Optional[float] = None
     currency: str = "IDR"
     notes: Optional[str] = None
+    is_draft: bool = False
 
 class InvoiceUpdate(BaseModel):
     rent: Optional[float] = None
@@ -178,6 +179,7 @@ class InvoiceUpdate(BaseModel):
     water_price: Optional[float] = None
     deposit: Optional[float] = None
     currency: Optional[str] = None
+    is_draft: Optional[bool] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
@@ -414,44 +416,98 @@ async def create_invoice(data: InvoiceCreate, user: dict = Depends(get_current_u
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     
-    # Calculate electricity
-    electricity_usage = data.electricity_end - data.electricity_start
-    electricity_cost = electricity_usage * data.electricity_rate
-    
-    # Calculate water
-    water_cost = data.water_price * data.water_occupants
-    
-    # Calculate total
-    total = data.rent + electricity_cost + water_cost + data.deposit
-    
-    # Generate serial number
-    serial_number = await generate_invoice_serial(data.year, data.month)
-    
-    invoice_doc = {
-        "id": str(ObjectId()),
-        "serial_number": serial_number,
-        "tenant_id": data.tenant_id,
-        "tenant_name": tenant["name"],
-        "room_number": tenant["room_number"],
-        "month": data.month,
-        "year": data.year,
-        "rent": data.rent,
-        "electricity_start": data.electricity_start,
-        "electricity_end": data.electricity_end,
-        "electricity_rate": data.electricity_rate,
-        "electricity_usage": electricity_usage,
-        "electricity_cost": electricity_cost,
-        "water_occupants": data.water_occupants,
-        "water_price": data.water_price,
-        "water_cost": water_cost,
-        "deposit": data.deposit,
-        "total": total,
-        "currency": data.currency,
-        "status": "pending",
-        "notes": data.notes,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "created_by": user["id"]
-    }
+    # If it's a draft, allow partial data
+    if data.is_draft:
+        # For draft, calculate only if all required fields are present
+        electricity_usage = 0
+        electricity_cost = 0
+        water_cost = 0
+        total = 0
+        
+        if data.electricity_start is not None and data.electricity_end is not None and data.electricity_rate is not None:
+            electricity_usage = data.electricity_end - data.electricity_start
+            electricity_cost = electricity_usage * data.electricity_rate
+        
+        if data.water_price is not None and data.water_occupants is not None:
+            water_cost = data.water_price * data.water_occupants
+        
+        rent = data.rent or 0
+        deposit = data.deposit or 0
+        total = rent + electricity_cost + water_cost + deposit
+        
+        # Generate serial number for draft
+        serial_number = f"DRAFT-{str(ObjectId())[:8]}"
+        
+        invoice_doc = {
+            "id": str(ObjectId()),
+            "serial_number": serial_number,
+            "tenant_id": data.tenant_id,
+            "tenant_name": tenant["name"],
+            "room_number": tenant["room_number"],
+            "month": data.month,
+            "year": data.year,
+            "rent": data.rent,
+            "electricity_start": data.electricity_start,
+            "electricity_end": data.electricity_end,
+            "electricity_rate": data.electricity_rate,
+            "electricity_usage": electricity_usage,
+            "electricity_cost": electricity_cost,
+            "water_occupants": data.water_occupants,
+            "water_price": data.water_price,
+            "water_cost": water_cost,
+            "deposit": data.deposit,
+            "total": total,
+            "currency": data.currency,
+            "status": "draft",
+            "notes": data.notes,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": user["id"]
+        }
+    else:
+        # Validate required fields for final invoice
+        if data.rent is None or data.electricity_start is None or data.electricity_end is None or \
+           data.electricity_rate is None or data.water_occupants is None or data.water_price is None or \
+           data.deposit is None:
+            raise HTTPException(status_code=400, detail="All billing fields are required for final invoice")
+        
+        # Calculate electricity
+        electricity_usage = data.electricity_end - data.electricity_start
+        electricity_cost = electricity_usage * data.electricity_rate
+        
+        # Calculate water
+        water_cost = data.water_price * data.water_occupants
+        
+        # Calculate total
+        total = data.rent + electricity_cost + water_cost + data.deposit
+        
+        # Generate serial number
+        serial_number = await generate_invoice_serial(data.year, data.month)
+        
+        invoice_doc = {
+            "id": str(ObjectId()),
+            "serial_number": serial_number,
+            "tenant_id": data.tenant_id,
+            "tenant_name": tenant["name"],
+            "room_number": tenant["room_number"],
+            "month": data.month,
+            "year": data.year,
+            "rent": data.rent,
+            "electricity_start": data.electricity_start,
+            "electricity_end": data.electricity_end,
+            "electricity_rate": data.electricity_rate,
+            "electricity_usage": electricity_usage,
+            "electricity_cost": electricity_cost,
+            "water_occupants": data.water_occupants,
+            "water_price": data.water_price,
+            "water_cost": water_cost,
+            "deposit": data.deposit,
+            "total": total,
+            "currency": data.currency,
+            "status": "pending",
+            "notes": data.notes,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": user["id"]
+        }
     
     # Create a copy for insertion
     insert_doc = invoice_doc.copy()
@@ -478,20 +534,59 @@ async def update_invoice(invoice_id: str, data: InvoiceUpdate, user: dict = Depe
     if not update_data:
         raise HTTPException(status_code=400, detail="No data to update")
     
-    # Recalculate if billing components changed
-    if any(k in update_data for k in ["rent", "electricity_start", "electricity_end", "electricity_rate", "water_occupants", "water_price", "deposit"]):
-        rent = update_data.get("rent", invoice["rent"])
-        elec_start = update_data.get("electricity_start", invoice["electricity_start"])
-        elec_end = update_data.get("electricity_end", invoice["electricity_end"])
-        elec_rate = update_data.get("electricity_rate", invoice["electricity_rate"])
-        water_occupants = update_data.get("water_occupants", invoice["water_occupants"])
-        water_price = update_data.get("water_price", invoice["water_price"])
-        deposit = update_data.get("deposit", invoice["deposit"])
+    # If converting draft to final invoice
+    if invoice.get("status") == "draft" and data.is_draft == False:
+        # Validate all required fields are present
+        rent = update_data.get("rent", invoice.get("rent"))
+        elec_start = update_data.get("electricity_start", invoice.get("electricity_start"))
+        elec_end = update_data.get("electricity_end", invoice.get("electricity_end"))
+        elec_rate = update_data.get("electricity_rate", invoice.get("electricity_rate"))
+        water_occupants = update_data.get("water_occupants", invoice.get("water_occupants"))
+        water_price = update_data.get("water_price", invoice.get("water_price"))
+        deposit = update_data.get("deposit", invoice.get("deposit"))
         
+        if None in [rent, elec_start, elec_end, elec_rate, water_occupants, water_price, deposit]:
+            raise HTTPException(status_code=400, detail="All billing fields are required to finalize invoice")
+        
+        # Calculate totals
         electricity_usage = elec_end - elec_start
         electricity_cost = electricity_usage * elec_rate
         water_cost = water_price * water_occupants
         total = rent + electricity_cost + water_cost + deposit
+        
+        # Generate proper serial number
+        serial_number = await generate_invoice_serial(invoice["year"], invoice["month"])
+        
+        update_data["electricity_usage"] = electricity_usage
+        update_data["electricity_cost"] = electricity_cost
+        update_data["water_cost"] = water_cost
+        update_data["total"] = total
+        update_data["status"] = "pending"
+        update_data["serial_number"] = serial_number
+    
+    # Recalculate if billing components changed (for both draft and non-draft)
+    elif any(k in update_data for k in ["rent", "electricity_start", "electricity_end", "electricity_rate", "water_occupants", "water_price", "deposit"]):
+        rent = update_data.get("rent", invoice.get("rent", 0))
+        elec_start = update_data.get("electricity_start", invoice.get("electricity_start"))
+        elec_end = update_data.get("electricity_end", invoice.get("electricity_end"))
+        elec_rate = update_data.get("electricity_rate", invoice.get("electricity_rate"))
+        water_occupants = update_data.get("water_occupants", invoice.get("water_occupants"))
+        water_price = update_data.get("water_price", invoice.get("water_price"))
+        deposit = update_data.get("deposit", invoice.get("deposit", 0))
+        
+        # Only calculate if we have the necessary values
+        electricity_usage = 0
+        electricity_cost = 0
+        water_cost = 0
+        
+        if elec_start is not None and elec_end is not None and elec_rate is not None:
+            electricity_usage = elec_end - elec_start
+            electricity_cost = electricity_usage * elec_rate
+        
+        if water_occupants is not None and water_price is not None:
+            water_cost = water_price * water_occupants
+        
+        total = (rent or 0) + electricity_cost + water_cost + (deposit or 0)
         
         update_data["electricity_usage"] = electricity_usage
         update_data["electricity_cost"] = electricity_cost
@@ -539,6 +634,10 @@ async def generate_invoice_pdf(invoice_id: str, user: dict = Depends(get_current
     invoice = await db.invoices.find_one({"id": invoice_id}, {"_id": 0})
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Prevent PDF generation for drafts
+    if invoice.get("status") == "draft":
+        raise HTTPException(status_code=400, detail="Cannot generate PDF for draft invoice. Please finalize the invoice first.")
     
     # Get user language preference from settings
     settings = await db.settings.find_one({"user_id": user["id"]}, {"_id": 0})

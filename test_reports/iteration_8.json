@@ -1,0 +1,24 @@
+{
+  "summary": "Tested mobile responsiveness (Tenants, Invoices, Create Invoice) and Draft Invoice feature end-to-end (backend + frontend). All acceptance criteria passing.",
+  "tested_scope": ["frontend", "backend", "integration"],
+  "passed": [
+    "Backend: POST /api/invoices with is_draft=true + partial data (only tenant + electricity_start) returns 200 with status='draft' and DRAFT-* serial_number",
+    "Backend: GET /api/invoices/{id} returns draft with nullable fields (rent/electricity_end/water_price = null)",
+    "Backend: GET /api/invoices/{id}/pdf on draft returns 400 with message 'Cannot generate PDF for draft invoice. Please finalize the invoice first.'",
+    "Backend: PUT /api/invoices/{id} with is_draft=false + full fields finalizes draft -> status='pending', serial changes DRAFT-* to INV-YYYYMM-####, total computed correctly",
+    "Backend: month/year remain required on InvoiceCreate (matches model spec) - draft still saves with these + any other partial subset",
+    "Frontend mobile (375x667) - Tenants: card view visible (md:hidden), table hidden",
+    "Frontend mobile (375x667) - Invoices: card view visible, table hidden",
+    "Frontend desktop (1920x1080) - Tenants + Invoices tables visible; draft row shows blue 'Draft' badge",
+    "Create Invoice page: 'Save Draft' button present alongside 'Buat Tagihan' (Save Draft disabled until tenant selected)",
+    "Invoice detail (draft): shows DRAFT badge, nullable fields render as '-', 'Edit Draft' button present, 'Unduh PDF (Draft)' button disabled",
+    "Edit Draft page (/invoices/edit/{id}): loads with pre-filled partial data (Meteran Awal=200), tenant locked ('Tenant cannot be changed'), 'Update Draft' + 'Finalize Invoice' buttons present",
+    "Finalize validation: clicking 'Finalize Invoice' with incomplete required fields shows error 'Please fill in all required fields to finalize invoice'"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Auth is cookie-based (not bearer token). Draft POST requires month & year (by model); other billing fields are optional as designed. All 10 acceptance criteria from the review request pass."
+}

@@ -95,15 +95,15 @@ const Invoices = () => {
 
   return (
     <div data-testid="invoices-page">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-950 mb-2">{t('invoices')}</h1>
-          <p className="text-slate-500">Manage billing invoices</p>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 mb-2">{t('invoices')}</h1>
+          <p className="text-sm sm:text-base text-slate-500">Manage billing invoices</p>
         </div>
         <Button
           onClick={() => navigate('/invoices/create')}
           data-testid="create-invoice-btn"
-          className="bg-slate-950 text-white hover:bg-slate-800 rounded-sm"
+          className="bg-slate-950 text-white hover:bg-slate-800 rounded-sm w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
           {t('createInvoice')}
@@ -120,16 +120,17 @@ const Invoices = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1"
             />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="outline" className="shrink-0">
               <Search className="w-4 h-4" />
             </Button>
           </form>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]" data-testid="status-filter">
+            <SelectTrigger className="w-full md:w-[180px]" data-testid="status-filter">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="pending">{t('pending')}</SelectItem>
               <SelectItem value="paid">{t('paid')}</SelectItem>
               <SelectItem value="overdue">{t('overdue')}</SelectItem>
@@ -138,7 +139,8 @@ const Invoices = () => {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr>
@@ -191,6 +193,54 @@ const Invoices = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {invoices.length > 0 ? (
+          invoices.map((invoice) => (
+            <div
+              key={invoice.id}
+              className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 cursor-pointer hover:border-slate-300 transition-colors"
+              onClick={() => navigate(`/invoices/${invoice.id}`)}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <p className="text-xs text-slate-500 mb-1">{invoice.serial_number}</p>
+                  <h3 className="font-bold text-slate-950 text-base mb-1">{invoice.tenant_name}</h3>
+                  <p className="text-sm text-slate-600">Room {invoice.room_number}</p>
+                </div>
+                <span className={`inline-block px-3 py-1 rounded-sm text-xs font-bold text-white ${getStatusColor(invoice.status)}`}>
+                  {t(invoice.status)}
+                </span>
+              </div>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Period:</span>
+                  <span className="text-slate-700 font-medium">{String(invoice.month).padStart(2, '0')}/{invoice.year}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">{t('total')}:</span>
+                  <span className="text-slate-950 font-mono font-bold">{formatCurrency(invoice.total, invoice.currency)}</span>
+                </div>
+              </div>
+              <Button
+                onClick={(e) => { e.stopPropagation(); downloadPDF(invoice.id, invoice.serial_number); }}
+                data-testid={`download-pdf-${invoice.id}`}
+                variant="outline"
+                className="w-full"
+                size="sm"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
+          ))
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-8 text-center text-slate-500">
+            No invoices yet
+          </div>
+        )}
       </div>
     </div>
   );

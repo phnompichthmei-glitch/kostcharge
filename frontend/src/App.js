@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Tenants from './pages/Tenants';
 import Invoices from './pages/Invoices';
 import CreateInvoice from './pages/CreateInvoice';
+import EditInvoice from './pages/EditInvoice';
 import InvoiceDetail from './pages/InvoiceDetail';
 import Settings from './pages/Settings';
 import './i18n';
@@ -58,6 +59,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <CreateInvoice />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <EditInvoice />
                   </Layout>
                 </ProtectedRoute>
               }
