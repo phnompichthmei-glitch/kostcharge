@@ -36,9 +36,28 @@ try:
 except Exception as e:
     print(f"Warning: Could not register Chinese font: {e}")
 
-# Register Khmer TrueType font
+# Register Khmer TrueType font with auto-installation
 try:
     khmer_font_path = '/usr/share/fonts/truetype/khmeros/KhmerOSsiemreap.ttf'
+    
+    # Auto-install Khmer fonts if not present (for production deployment)
+    if not os.path.exists(khmer_font_path):
+        print("⚠ Khmer fonts not found. Attempting auto-installation...")
+        import subprocess
+        try:
+            # Update package list and install fonts
+            subprocess.run(['apt-get', 'update', '-qq'], check=True, capture_output=True)
+            subprocess.run(['apt-get', 'install', '-y', 'fonts-khmeros'], 
+                          check=True, capture_output=True, 
+                          env={**os.environ, 'DEBIAN_FRONTEND': 'noninteractive'})
+            print("✓ Khmer fonts installed successfully via auto-installation")
+        except subprocess.CalledProcessError as e:
+            print(f"✗ Auto-installation failed: {e}")
+            print("  Please install manually: apt-get install fonts-khmeros")
+        except Exception as e:
+            print(f"✗ Auto-installation error: {e}")
+    
+    # Register font if path exists
     if os.path.exists(khmer_font_path):
         from reportlab.lib.fonts import addMapping
         pdfmetrics.registerFont(TTFont('KhmerOS', khmer_font_path))
@@ -49,6 +68,9 @@ try:
         addMapping('KhmerOS', 1, 0, 'KhmerOS')  # bold
         addMapping('KhmerOS', 1, 1, 'KhmerOS')  # bold-italic
         print("✓ Khmer font registered successfully with family mappings")
+    else:
+        print("✗ Khmer font still not available after installation attempt")
+        print("  PDF generation for Khmer language will fail")
 except Exception as e:
     print(f"Warning: Could not register Khmer font: {e}")
 
