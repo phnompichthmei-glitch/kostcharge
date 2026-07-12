@@ -37,45 +37,56 @@ try:
 except Exception as e:
     print(f"Warning: Could not register Chinese font: {e}")
 
-# Register Khmer TrueType font with auto-installation
+# Register Khmer TrueType font (bundled in repository)
 try:
-    khmer_font_path = '/usr/share/fonts/truetype/khmeros/KhmerOSsiemreap.ttf'
+    # Try bundled font first (works on all platforms including Render)
+    bundled_font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'KhmerOSSiemreap.ttf')
+    system_font_path = '/usr/share/fonts/truetype/khmeros/KhmerOSsiemreap.ttf'
     
-    # Auto-install Khmer fonts if not present (skip on Render - no sudo access)
-    if not os.path.exists(khmer_font_path) and os.path.exists('/app'):
-        # Only attempt auto-install in environments with package manager access
-        print("⚠ Khmer fonts not found. Attempting auto-installation...")
-        import subprocess
-        try:
-            # Update package list and install fonts
-            subprocess.run(['apt-get', 'update', '-qq'], check=True, capture_output=True)
-            subprocess.run(['apt-get', 'install', '-y', 'fonts-khmeros'], 
-                          check=True, capture_output=True, 
-                          env={**os.environ, 'DEBIAN_FRONTEND': 'noninteractive'})
-            print("✓ Khmer fonts installed successfully via auto-installation")
-        except subprocess.CalledProcessError as e:
-            print(f"✗ Auto-installation failed: {e}")
-            print("  Please install manually: apt-get install fonts-khmeros")
-        except Exception as e:
-            print(f"✗ Auto-installation error: {e}")
-    elif not os.path.exists(khmer_font_path):
-        print("⚠ Running on restricted environment (Render) - Khmer fonts not available")
-        print("  Khmer PDF generation will be limited")
+    # Use bundled font if available, fallback to system font
+    if os.path.exists(bundled_font_path):
+        khmer_font_path = bundled_font_path
+        print(f"✓ Using bundled Khmer font: {bundled_font_path}")
+    elif os.path.exists(system_font_path):
+        khmer_font_path = system_font_path
+        print(f"✓ Using system Khmer font: {system_font_path}")
+    else:
+        # Auto-install only in local dev (skip on Render - no sudo access)
+        if os.path.exists('/app'):
+            print("⚠ Khmer fonts not found. Attempting auto-installation...")
+            import subprocess
+            try:
+                subprocess.run(['apt-get', 'update', '-qq'], check=True, capture_output=True)
+                subprocess.run(['apt-get', 'install', '-y', 'fonts-khmeros'], 
+                              check=True, capture_output=True, 
+                              env={**os.environ, 'DEBIAN_FRONTEND': 'noninteractive'})
+                if os.path.exists(system_font_path):
+                    khmer_font_path = system_font_path
+                    print("✓ Khmer fonts installed successfully via auto-installation")
+                else:
+                    khmer_font_path = None
+            except subprocess.CalledProcessError as e:
+                print(f"✗ Auto-installation failed: {e}")
+                khmer_font_path = None
+            except Exception as e:
+                print(f"✗ Auto-installation error: {e}")
+                khmer_font_path = None
+        else:
+            print("⚠ Khmer font files not found - PDF generation for Khmer will fail")
+            khmer_font_path = None
     
-    # Register font if path exists
-    if os.path.exists(khmer_font_path):
+    # Register font if available
+    if khmer_font_path and os.path.exists(khmer_font_path):
         from reportlab.lib.fonts import addMapping
         pdfmetrics.registerFont(TTFont('KhmerOS', khmer_font_path))
         # Register font family mapping so Paragraph can use it properly
-        # Map all variants (normal, bold, italic, bold-italic) to the same font file
         addMapping('KhmerOS', 0, 0, 'KhmerOS')  # normal
         addMapping('KhmerOS', 0, 1, 'KhmerOS')  # italic
         addMapping('KhmerOS', 1, 0, 'KhmerOS')  # bold
         addMapping('KhmerOS', 1, 1, 'KhmerOS')  # bold-italic
         print("✓ Khmer font registered successfully with family mappings")
     else:
-        print("✗ Khmer font still not available after installation attempt")
-        print("  PDF generation for Khmer language will fail")
+        print("✗ Khmer font not available - PDF generation for Khmer language will fail")
 except Exception as e:
     print(f"Warning: Could not register Khmer font: {e}")
 
