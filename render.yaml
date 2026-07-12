@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: kostcharge-backend
+    runtime: python
+    repo: https://github.com/phnompichthmei-glitch/kostcharge
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+    healthCheckPath: /
