@@ -79,11 +79,19 @@ try:
     if khmer_font_path and os.path.exists(khmer_font_path):
         from reportlab.lib.fonts import addMapping
         pdfmetrics.registerFont(TTFont('KhmerOS', khmer_font_path))
+        # Also register with lowercase for compatibility
+        pdfmetrics.registerFont(TTFont('khmeros', khmer_font_path))
+        
         # Register font family mapping so Paragraph can use it properly
         addMapping('KhmerOS', 0, 0, 'KhmerOS')  # normal
         addMapping('KhmerOS', 0, 1, 'KhmerOS')  # italic
         addMapping('KhmerOS', 1, 0, 'KhmerOS')  # bold
         addMapping('KhmerOS', 1, 1, 'KhmerOS')  # bold-italic
+        # Also add mapping for lowercase
+        addMapping('khmeros', 0, 0, 'khmeros')  # normal
+        addMapping('khmeros', 0, 1, 'khmeros')  # italic
+        addMapping('khmeros', 1, 0, 'khmeros')  # bold
+        addMapping('khmeros', 1, 1, 'khmeros')  # bold-italic
         print("✓ Khmer font registered successfully with family mappings")
     else:
         print("✗ Khmer font not available - PDF generation for Khmer language will fail")
