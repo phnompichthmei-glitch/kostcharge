@@ -28,6 +28,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfbase.ttfonts import TTFont
 import requests
+import certifi
 
 # Register Unicode CID fonts for Chinese/Japanese/Korean support
 try:
@@ -81,10 +82,11 @@ mongo_url = os.environ['MONGO_URL']
 use_tls = mongo_url.startswith('mongodb+srv://') or 'mongodb.net' in mongo_url
 
 if use_tls:
-    # Production MongoDB Atlas with SSL
+    # Production MongoDB Atlas with SSL (Python 3.13+ compatible)
     client = AsyncIOMotorClient(
         mongo_url,
         tls=True,
+        tlsCAFile=certifi.where(),  # Required for Python 3.13+ SSL validation
         tlsAllowInvalidCertificates=False,
         serverSelectionTimeoutMS=30000,
         connectTimeoutMS=20000,
