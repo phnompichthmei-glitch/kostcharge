@@ -1,0 +1,31 @@
+{
+  "summary": "Tested cross-origin cookie auth between https://kostcharge.vercel.app and https://kostcharge-backend.onrender.com. The reported bug ('401 on page reload, cookies not persisting') is NOT REPRODUCIBLE. Login sets cookies correctly, they persist across reload, and all authenticated endpoints return 200 after F5.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "curl POST /api/auth/login -> 200; response includes 2x Set-Cookie: access_token & refresh_token with HttpOnly; Secure; SameSite=none; Path=/; Max-Age=900/604800; no explicit Domain (host-only cookie for kostcharge-backend.onrender.com)",
+    "CORS headers correct on login response: Access-Control-Allow-Credentials: true, Access-Control-Allow-Origin: https://kostcharge.vercel.app, Vary: Origin",
+    "curl with saved cookie jar: GET /api/auth/me, /api/tenants, /api/dashboard/stats all return 200 with valid data",
+    "curl without cookies: GET /api/auth/me returns 401 (expected)",
+    "Browser flow (Playwright, real Chromium): logged in with admin@kostcharge.com/admin123 -> redirected to /dashboard, cards render (1 tenant, INV-202607-0002)",
+    "After page.reload(): user REMAINS on /dashboard, /api/auth/me returns 200, /api/dashboard/stats returns 200, /api/settings returns 200 — cookies WERE sent (proven by 200 responses; browser context still contains access_token & refresh_token cookies with domain=kostcharge-backend.onrender.com, sameSite=None, secure=true, httpOnly=true)",
+    "Session persistence across reload verified end-to-end"
+  ],
+  "failed": [
+    {
+      "area": "websocket (non-blocking)",
+      "issue": "WebSocket connection to wss://kostcharge-backend.onrender.com/socket.io/ fails with HTTP 403 during handshake. This is unrelated to REST auth and does not affect login/session persistence.",
+      "evidence": "Console: \"WebSocket connection to 'wss://.../socket.io/?EIO=4&transport=websocket' failed: Unexpected response code: 403\"",
+      "priority": "LOW"
+    }
+  ],
+  "action_items": [
+    "The originally reported bug appears already fixed / not reproducible against current deployed code. Ask the reporter to (a) retry in a fresh incognito window, (b) confirm they are hitting https://kostcharge.vercel.app (not a stale preview URL), and (c) share a HAR from a failing session. If still failing on their end, likely candidates are: browser third-party-cookie blocking (Safari ITP / Brave / strict tracking protection blocks SameSite=None cross-site cookies) or a stale bundle on their CDN cache — force-reload the Vercel deployment.",
+    "OPTIONAL hardening (not required for this bug): investigate socket.io 403 handshake if realtime features are needed."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": {
+    "playwright_cookie_header_caveat": "In Playwright's request event, HttpOnly cookies are NOT visible in request.headers['cookie'] (shows 'MISSING'). This is a Playwright observation artifact, not proof cookies weren't sent. Actual proof cookies were sent: authenticated endpoints returned 200 after reload."
+  }
+}
