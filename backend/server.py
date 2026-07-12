@@ -410,8 +410,8 @@ async def refresh(request: Request, response: Response):
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=False,
-            samesite="lax",
+            secure=True,  # Required for cross-origin cookies
+            samesite="none",  # Required for cross-origin cookies
             max_age=900,
             path="/"
         )

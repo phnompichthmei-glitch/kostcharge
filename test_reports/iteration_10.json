@@ -1,0 +1,20 @@
+{
+  "summary": "P0 auto-logout bug fix verified. Cookie settings (secure=true, samesite=none, httponly=true) are correctly applied on /auth/login, /auth/register and /auth/refresh. Session persists across page reloads and token refresh works.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login returns 200 with admin@kostcharge.com and sets access_token + refresh_token cookies (HttpOnly, Secure)",
+    "GET /api/auth/me returns 200 with cookie-based auth",
+    "POST /api/auth/refresh returns 200 and rotates access_token cookie with Secure + SameSite=None",
+    "UI login flow: user redirected to /dashboard after login; dashboard renders KPIs and recent invoices",
+    "Session persistence: user stayed logged in on /dashboard after 3 consecutive page reloads (login form did not reappear)",
+    "Browser fetch to /api/auth/me returns 200 with credentials:'include' (cross-origin cookies working)",
+    "Browser fetch to /api/auth/refresh returns 200; reload after refresh keeps user logged in",
+    "Cookie flags verified via curl: HttpOnly + Secure + max-age 900 (access) / 604800 (refresh)"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Non-blocking: WebSocket to /socket.io/ fails (feature not implemented) - harmless dev-tool noise. Two 401s on initial load are the expected /auth/me probe before login (normal behavior). 2-min token-refresh wait was not executed literally; refresh endpoint was invoked explicitly and verified working."
+}
