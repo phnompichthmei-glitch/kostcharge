@@ -74,9 +74,26 @@ try:
 except Exception as e:
     print(f"Warning: Could not register Khmer font: {e}")
 
-# MongoDB connection
+# MongoDB connection with SSL/TLS compatibility
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+
+# Auto-detect if we need SSL (mongodb+srv:// or production Atlas URLs need it)
+use_tls = mongo_url.startswith('mongodb+srv://') or 'mongodb.net' in mongo_url
+
+if use_tls:
+    # Production MongoDB Atlas with SSL
+    client = AsyncIOMotorClient(
+        mongo_url,
+        tls=True,
+        tlsAllowInvalidCertificates=False,
+        serverSelectionTimeoutMS=30000,
+        connectTimeoutMS=20000,
+        socketTimeoutMS=20000
+    )
+else:
+    # Local development MongoDB without SSL
+    client = AsyncIOMotorClient(mongo_url)
+
 db = client[os.environ['DB_NAME']]
 
 # Socket.IO setup
