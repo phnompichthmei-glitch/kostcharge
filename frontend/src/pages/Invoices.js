@@ -29,6 +29,7 @@ const Invoices = () => {
 
   useEffect(() => {
     loadInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ const Invoices = () => {
         socket.off('invoice_deleted');
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket]);
 
   const loadInvoices = async () => {

@@ -44,6 +44,7 @@ const EditInvoice = () => {
   useEffect(() => {
     loadTenants();
     loadInvoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadTenants = async () => {
