@@ -94,7 +94,9 @@ if use_tls:
         tlsAllowInvalidCertificates=False,
         serverSelectionTimeoutMS=30000,
         connectTimeoutMS=20000,
-        socketTimeoutMS=20000
+        socketTimeoutMS=20000,
+        w='majority',  # Explicit write concern (override URL param)
+        retryWrites=True
     )
 else:
     # Local development MongoDB without SSL
