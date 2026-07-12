@@ -1,0 +1,11 @@
+{
+  "buildCommand": "yarn build",
+  "devCommand": "yarn start",
+  "installCommand": "yarn install",
+  "framework": "create-react-app",
+  "outputDirectory": "build",
+  "regions": ["iad1"],
+  "env": {
+    "REACT_APP_BACKEND_URL": "https://kostcharge-backend.onrender.com"
+  }
+}
