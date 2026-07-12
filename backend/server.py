@@ -831,15 +831,28 @@ async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user
         bold_font = 'Helvetica-Bold'
     
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        fontName=bold_font,
-        textColor=colors.HexColor('#020617'),
-        spaceAfter=30,
-        alignment=TA_CENTER
-    )
+    
+    # For Khmer, use simpler style without bold to avoid font family mapping issues
+    if lang == 'km':
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            fontName=base_font,  # Use base font, not bold
+            fontSize=24,
+            textColor=colors.HexColor('#020617'),
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            leading=30  # Line height for Khmer
+        )
+    else:
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            fontName=bold_font,
+            textColor=colors.HexColor('#020617'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
     
     story = []
     
@@ -870,14 +883,24 @@ async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user
     ]
     
     info_table = Table(invoice_info, colWidths=[2 * inch, 4 * inch])
-    info_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, -1), base_font, 10),
-        ('FONT', (0, 0), (0, -1), bold_font, 10),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-    ]))
+    # For Khmer, use base_font for all cells to avoid bold font family issues
+    if lang == 'km':
+        info_table.setStyle(TableStyle([
+            ('FONT', (0, 0), (-1, -1), base_font, 10),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ]))
+    else:
+        info_table.setStyle(TableStyle([
+            ('FONT', (0, 0), (-1, -1), base_font, 10),
+            ('FONT', (0, 0), (0, -1), bold_font, 10),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ]))
     story.append(info_table)
     story.append(Spacer(1, 0.3 * inch))
     
@@ -892,19 +915,33 @@ async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user
     ]
     
     billing_table = Table(billing_data, colWidths=[2 * inch, 2.5 * inch, 1.5 * inch])
-    billing_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, 0), bold_font, 11),
-        ('FONT', (0, 1), (-1, -2), base_font, 10),
-        ('FONT', (1, -1), (-1, -1), bold_font, 12),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
-        ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
-        ('ALIGN', (1, -1), (1, -1), 'RIGHT'),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F1F5F9')),
-        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F8FAFC')),
-        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E2E8F0')),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-        ('TOPPADDING', (0, 0), (-1, -1), 12),
-    ]))
+    # For Khmer, use base_font to avoid bold font family issues
+    if lang == 'km':
+        billing_table.setStyle(TableStyle([
+            ('FONT', (0, 0), (-1, -1), base_font, 10),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
+            ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+            ('ALIGN', (1, -1), (1, -1), 'RIGHT'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F1F5F9')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F8FAFC')),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E2E8F0')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ]))
+    else:
+        billing_table.setStyle(TableStyle([
+            ('FONT', (0, 0), (-1, 0), bold_font, 11),
+            ('FONT', (0, 1), (-1, -2), base_font, 10),
+            ('FONT', (1, -1), (-1, -1), bold_font, 12),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#020617')),
+            ('ALIGN', (2, 0), (2, -1), 'RIGHT'),
+            ('ALIGN', (1, -1), (1, -1), 'RIGHT'),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F1F5F9')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F8FAFC')),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E2E8F0')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ]))
     story.append(billing_table)
     
     # Notes if any
@@ -920,7 +957,9 @@ async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user
     # Status
     story.append(Spacer(1, 0.3 * inch))
     status_color = "#16A34A" if invoice["status"] == "paid" else "#EAB308" if invoice["status"] == "pending" else "#DC2626"
-    status_style = ParagraphStyle('Status', parent=styles['Normal'], fontName=bold_font, fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
+    # For Khmer, use base_font instead of bold_font
+    status_font = base_font if lang == 'km' else bold_font
+    status_style = ParagraphStyle('Status', parent=styles['Normal'], fontName=status_font, fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
     status_text = t["paid"] if invoice["status"] == "paid" else t["pending"] if invoice["status"] == "pending" else t["overdue"]
     # For Khmer, avoid using <b> tags
     if lang == 'km':
