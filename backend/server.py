@@ -947,24 +947,25 @@ async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user
     # Notes if any
     if invoice.get("notes"):
         story.append(Spacer(1, 0.3 * inch))
-        notes_style = ParagraphStyle('Notes', parent=styles['Normal'], fontName=base_font, fontSize=9, textColor=colors.HexColor('#475569'))
-        # For Khmer, avoid using <b> tags as they cause rendering issues
+        # For Khmer, don't use parent style to avoid font family issues
         if lang == 'km':
+            notes_style = ParagraphStyle('Notes', fontName=base_font, fontSize=9, textColor=colors.HexColor('#475569'))
             story.append(Paragraph(f"{t['notes']} {invoice['notes']}", notes_style))
         else:
+            notes_style = ParagraphStyle('Notes', parent=styles['Normal'], fontName=base_font, fontSize=9, textColor=colors.HexColor('#475569'))
             story.append(Paragraph(f"<b>{t['notes']}</b> {invoice['notes']}", notes_style))
     
     # Status
     story.append(Spacer(1, 0.3 * inch))
     status_color = "#16A34A" if invoice["status"] == "paid" else "#EAB308" if invoice["status"] == "pending" else "#DC2626"
-    # For Khmer, use base_font instead of bold_font
-    status_font = base_font if lang == 'km' else bold_font
-    status_style = ParagraphStyle('Status', parent=styles['Normal'], fontName=status_font, fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
-    status_text = t["paid"] if invoice["status"] == "paid" else t["pending"] if invoice["status"] == "pending" else t["overdue"]
-    # For Khmer, avoid using <b> tags
+    # For Khmer, use base_font and no parent style to avoid font family issues
     if lang == 'km':
+        status_style = ParagraphStyle('Status', fontName=base_font, fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
+        status_text = t["paid"] if invoice["status"] == "paid" else t["pending"] if invoice["status"] == "pending" else t["overdue"]
         story.append(Paragraph(f"{t['status']} {status_text}", status_style))
     else:
+        status_style = ParagraphStyle('Status', parent=styles['Normal'], fontName=bold_font, fontSize=11, textColor=colors.HexColor(status_color), alignment=TA_CENTER)
+        status_text = t["paid"] if invoice["status"] == "paid" else t["pending"] if invoice["status"] == "pending" else t["overdue"]
         story.append(Paragraph(f"<b>{t['status']} {status_text}</b>", status_style))
     
     doc.build(story)
