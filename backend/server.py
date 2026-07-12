@@ -40,7 +40,7 @@ except Exception as e:
 # Register Khmer TrueType font (bundled in repository)
 try:
     # Try bundled font first (works on all platforms including Render)
-    bundled_font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'KhmerOSSiemreap.ttf')
+    bundled_font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'KhmerOSsiemreap.ttf')
     system_font_path = '/usr/share/fonts/truetype/khmeros/KhmerOSsiemreap.ttf'
     
     # Use bundled font if available, fallback to system font
