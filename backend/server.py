@@ -317,7 +317,14 @@ async def register(data: RegisterRequest, response: Response):
         path="/"
     )
     
-    return {"id": user_id, "email": email, "name": data.name, "role": "user"}
+    return {
+        "id": user_id,
+        "email": email,
+        "name": data.name,
+        "role": "user",
+        "access_token": access_token,
+        "refresh_token": refresh_token
+    }
 
 @api_router.post("/auth/login")
 async def login(data: LoginRequest, request: Request, response: Response):
@@ -377,7 +384,9 @@ async def login(data: LoginRequest, request: Request, response: Response):
         "id": user_id,
         "email": user["email"],
         "name": user["name"],
-        "role": user.get("role", "user")
+        "role": user.get("role", "user"),
+        "access_token": access_token,  # Return token in body for Authorization header
+        "refresh_token": refresh_token  # Return refresh token in body
     }
 
 @api_router.post("/auth/logout")

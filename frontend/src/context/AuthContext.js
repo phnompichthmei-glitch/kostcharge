@@ -5,6 +5,18 @@ const AuthContext = createContext(null);
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Add axios interceptor to include Authorization header from localStorage
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token && config.url?.includes(process.env.REACT_APP_BACKEND_URL)) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 function formatApiErrorDetail(detail) {
   if (detail == null) return 'Something went wrong. Please try again.';
   if (typeof detail === 'string') return detail;
@@ -37,6 +49,15 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await axios.post(`${API}/auth/login`, { email, password }, { withCredentials: true });
       setUser(data);
+      
+      // Store tokens in localStorage for Authorization header
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+      }
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+      
       return { success: true };
     } catch (error) {
       return {
@@ -50,6 +71,15 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await axios.post(`${API}/auth/register`, { email, password, name }, { withCredentials: true });
       setUser(data);
+      
+      // Store tokens in localStorage
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+      }
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+      
       return { success: true };
     } catch (error) {
       return {
@@ -63,6 +93,10 @@ export const AuthProvider = ({ children }) => {
     try {
       await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
       setUser(false);
+      
+      // Clear tokens from localStorage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     } catch (error) {
       console.error('Logout error:', error);
     }

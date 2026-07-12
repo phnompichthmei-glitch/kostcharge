@@ -1,0 +1,35 @@
+{
+  "summary": "Backend (local): dual auth works — login returns access_token+refresh_token, /auth/me accepts Bearer header (200) and rejects missing/invalid (401). Frontend (localhost:3000 → Render prod backend): login POST returns HTTP 200 but response body has NO access_token/refresh_token, so nothing stored in localStorage; after 3 reloads user is logged out; Authorization header never sent (nothing to send). Direct curl to Render confirms: response body = {id,email,name,role} only. LOCAL code is correct; Render deployment is stale.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "Local backend /auth/login returns access_token and refresh_token in body",
+    "Local backend /auth/me accepts Authorization: Bearer <token> (200)",
+    "Local backend /auth/me rejects requests with no token or bad token (401)",
+    "CORS preflight from localhost:3000 to Render OK (allow-credentials, allow-origin echoed)",
+    "Frontend AuthContext code correctly stores data.access_token/refresh_token to localStorage if present",
+    "Frontend axios interceptor correctly injects Authorization header (verified in code)",
+    "Frontend logout path clears localStorage tokens (verified — tokens absent after failed auth flow)"
+  ],
+  "failed": [
+    {
+      "area": "Render production backend deployment",
+      "issue": "Deployed /api/auth/login response is missing access_token and refresh_token fields (returns only id/email/name/role). Old code is running on kostcharge-backend.onrender.com.",
+      "evidence": "curl -X POST https://kostcharge-backend.onrender.com/api/auth/login -d '{\"email\":\"admin@kostcharge.com\",\"password\":\"admin123\"}' -> HTTP 200, body: {\"id\":\"6a53...\",\"email\":\"admin@kostcharge.com\",\"name\":\"Admin\",\"role\":\"admin\"} — NO tokens. Local backend on :8001 returns the tokens correctly.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "Session persistence (end-to-end)",
+      "issue": "After login on localhost:3000 (talking to Render prod), localStorage.access_token=null. All 3 reloads redirect to login. Authorization header never attached to any request (0/9 backend requests carried it).",
+      "evidence": "Playwright: tokens_stored=false; 3x reload -> on_login=true each time; 9 backend requests captured, 0 with Authorization header.",
+      "priority": "HIGH"
+    }
+  ],
+  "action_items": [
+    "Deploy latest backend code to Render (Save to Github → Render auto-deploy) so /api/auth/login returns access_token + refresh_token in body. Lines 383-390 of server.py must be in the deployed build.",
+    "After Render redeploys, re-run this UI flow — expected: localStorage tokens present, session survives 3 reloads, Authorization: Bearer <token> header present on all /api/* requests, logout clears localStorage.",
+    "Optionally point REACT_APP_BACKEND_URL to http://localhost:8001 for local dev testing to validate the fix before pushing to prod."
+  ],
+  "success_rate": {"backend": "100% (local) / partial (prod — missing token fields)", "frontend": "code correct, integration fails due to stale prod backend"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}
