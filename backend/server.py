@@ -41,8 +41,9 @@ except Exception as e:
 try:
     khmer_font_path = '/usr/share/fonts/truetype/khmeros/KhmerOSsiemreap.ttf'
     
-    # Auto-install Khmer fonts if not present (for production deployment)
-    if not os.path.exists(khmer_font_path):
+    # Auto-install Khmer fonts if not present (skip on Render - no sudo access)
+    if not os.path.exists(khmer_font_path) and os.path.exists('/app'):
+        # Only attempt auto-install in environments with package manager access
         print("⚠ Khmer fonts not found. Attempting auto-installation...")
         import subprocess
         try:
@@ -57,6 +58,9 @@ try:
             print("  Please install manually: apt-get install fonts-khmeros")
         except Exception as e:
             print(f"✗ Auto-installation error: {e}")
+    elif not os.path.exists(khmer_font_path):
+        print("⚠ Running on restricted environment (Render) - Khmer fonts not available")
+        print("  Khmer PDF generation will be limited")
     
     # Register font if path exists
     if os.path.exists(khmer_font_path):
@@ -1003,9 +1007,10 @@ async def seed_admin():
             {"$set": {"password_hash": hash_password(admin_password)}}
         )
     
-    # Write test credentials
-    os.makedirs("/app/memory", exist_ok=True)
-    with open("/app/memory/test_credentials.md", "w") as f:
+    # Write test credentials (use /tmp on Render, /app locally)
+    memory_dir = "/tmp/memory" if not os.path.exists("/app") else "/app/memory"
+    os.makedirs(memory_dir, exist_ok=True)
+    with open(f"{memory_dir}/test_credentials.md", "w") as f:
         f.write("# Test Credentials\n\n")
         f.write("## Admin Account\n")
         f.write(f"- Email: {admin_email}\n")
