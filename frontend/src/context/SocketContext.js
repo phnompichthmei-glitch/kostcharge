@@ -31,6 +31,7 @@ export const SocketProvider = ({ children }) => {
       socket.close();
       setSocket(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   return (
