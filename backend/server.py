@@ -98,6 +98,17 @@ try:
 except Exception as e:
     print(f"Warning: Could not register Khmer font: {e}")
 
+# Define allowed origins for CORS (used by both FastAPI and Socket.IO)
+ALLOWED_ORIGINS = [
+    "https://kostcharge.vercel.app",  # Production Vercel URL
+    "http://localhost:3000",  # Local development
+]
+
+# Add FRONTEND_URL from env if set and not already in list
+frontend_url = os.environ.get("FRONTEND_URL")
+if frontend_url and frontend_url not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(frontend_url)
+
 # MongoDB connection with SSL/TLS compatibility
 mongo_url = os.environ['MONGO_URL']
 
@@ -123,8 +134,8 @@ else:
 
 db = client[os.environ['DB_NAME']]
 
-# Socket.IO setup
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+# Socket.IO setup with explicit CORS origins (no wildcard)
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins=ALLOWED_ORIGINS)
 
 # Create the main app
 app = FastAPI()
@@ -1038,11 +1049,11 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
 # Include the router in the main app
 app.include_router(api_router)
 
-# CORS Configuration
+# CORS Configuration (use the same allowed origins as Socket.IO)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,  # CRITICAL: Allow cookies in cross-origin requests
-    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
