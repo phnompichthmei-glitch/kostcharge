@@ -433,7 +433,8 @@ async def refresh(request: Request, response: Response):
 # Tenant endpoints
 @api_router.get("/tenants")
 async def get_tenants(user: dict = Depends(get_current_user)):
-    tenants = await db.tenants.find({}, {"_id": 0}).to_list(1000)
+    # Sort by room_number ascending (101, 102, 103, ...)
+    tenants = await db.tenants.find({}, {"_id": 0}).sort("room_number", 1).to_list(1000)
     return tenants
 
 @api_router.post("/tenants")
