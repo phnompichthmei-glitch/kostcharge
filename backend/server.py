@@ -433,8 +433,18 @@ async def refresh(request: Request, response: Response):
 # Tenant endpoints
 @api_router.get("/tenants")
 async def get_tenants(user: dict = Depends(get_current_user)):
-    # Sort by room_number ascending (101, 102, 103, ...)
-    tenants = await db.tenants.find({}, {"_id": 0}).sort("room_number", 1).to_list(1000)
+    tenants = await db.tenants.find({}, {"_id": 0}).to_list(1000)
+    
+    # Sort by room_number as integer (pure numeric: 101, 102, 103...)
+    # Numeric rooms first, then alphanumeric rooms at the end
+    def sort_key(tenant):
+        room = str(tenant.get("room_number", ""))
+        if room.isdigit():
+            return (0, int(room))  # Numeric rooms: (0, 101), (0, 102)...
+        else:
+            return (1, room)  # Non-numeric rooms at the end: (1, "A201"), (1, "T101")...
+    
+    tenants.sort(key=sort_key)
     return tenants
 
 @api_router.post("/tenants")
