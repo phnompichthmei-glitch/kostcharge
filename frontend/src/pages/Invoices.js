@@ -143,13 +143,15 @@ const Invoices = () => {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+      <div className="hidden md:block bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('serialNumber')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('tenant')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">Period</th>
+              <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-center">Meteran Awal</th>
+              <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-center">Meteran Akhir</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('total')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('status')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('actions')}</th>
@@ -169,6 +171,12 @@ const Invoices = () => {
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700">
                     {String(invoice.month).padStart(2, '0')}/{invoice.year}
+                  </td>
+                  <td className="border-b border-slate-200 py-3 px-4 text-slate-600 text-center font-mono text-sm">
+                    {invoice.electricity_start != null ? invoice.electricity_start : '-'}
+                  </td>
+                  <td className="border-b border-slate-200 py-3 px-4 text-slate-600 text-center font-mono text-sm">
+                    {invoice.electricity_end != null ? invoice.electricity_end : '-'}
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">
                     {formatCurrency(invoice.total, invoice.currency)}
@@ -191,7 +199,7 @@ const Invoices = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-500">No invoices yet</td>
+                <td colSpan="8" className="py-8 text-center text-slate-500">No invoices yet</td>
               </tr>
             )}
           </tbody>
@@ -221,6 +229,14 @@ const Invoices = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Period:</span>
                   <span className="text-slate-700 font-medium">{String(invoice.month).padStart(2, '0')}/{invoice.year}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Meteran Awal:</span>
+                  <span className="text-slate-700 font-mono">{invoice.electricity_start != null ? invoice.electricity_start : '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Meteran Akhir:</span>
+                  <span className="text-slate-700 font-mono">{invoice.electricity_end != null ? invoice.electricity_end : '-'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">{t('total')}:</span>
