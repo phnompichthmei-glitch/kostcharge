@@ -268,6 +268,7 @@ class InvoiceUpdate(BaseModel):
     is_draft: Optional[bool] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+    payment_due_day: Optional[int] = None  # Allow updating payment_due_day
 
 class SettingsUpdate(BaseModel):
     default_currency: Optional[str] = None
