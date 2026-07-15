@@ -16,6 +16,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('IDR');
   const [upcomingInvoices, setUpcomingInvoices] = useState([]);
+  const [tenants, setTenants] = useState([]); // Add tenants state
 
   const loadData = useCallback(async () => {
     try {
@@ -45,33 +46,56 @@ const Dashboard = () => {
 
   const loadUpcomingInvoices = useCallback(async () => {
     try {
+      // Fetch tenants first for payment_due_day lookup
+      const { data: tenantsData } = await axios.get(`${API}/tenants`, { withCredentials: true });
+      setTenants(tenantsData);
+      
       // Fetch all invoices (not filtered by status)
       const { data } = await axios.get(`${API}/invoices`, { 
         withCredentials: true 
       });
       
       console.log('📊 Widget Debug - Total invoices fetched:', data.length);
+      console.log('📊 Widget Debug - Total tenants fetched:', tenantsData.length);
       
       // Filter invoices with status 'pending' OR 'draft' and due within 15 days
       const today = new Date();
       const upcoming = data.filter(inv => {
         // Only include pending or draft invoices
         if (inv.status !== 'pending' && inv.status !== 'draft') return false;
-        if (!inv.payment_due_day) {
-          console.log(`⚠️ Invoice ${inv.serial_number} tidak punya payment_due_day`);
+        
+        // Get payment_due_day from invoice or tenant
+        let dueDay = inv.payment_due_day;
+        if (!dueDay) {
+          const tenant = tenantsData.find(t => t.id === inv.tenant_id);
+          dueDay = tenant?.payment_due_day;
+        }
+        
+        if (!dueDay) {
+          console.log(`⚠️ Invoice ${inv.serial_number} tidak punya payment_due_day (invoice & tenant)`);
           return false;
         }
         
-        const dueDate = new Date(inv.year, inv.month - 1, inv.payment_due_day);
+        const dueDate = new Date(inv.year, inv.month - 1, dueDay);
         const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
         const inRange = diffDays >= -15 && diffDays <= 15;
         
-        console.log(`${inRange ? '✅' : '❌'} ${inv.serial_number} (${inv.status}) - Due: ${inv.payment_due_day}/${inv.month}/${inv.year} | Diff: ${diffDays} hari`);
+        console.log(`${inRange ? '✅' : '❌'} ${inv.serial_number} (${inv.status}) - Due: ${dueDay}/${inv.month}/${inv.year} | Diff: ${diffDays} hari`);
         
         return inRange;
       }).sort((a, b) => {
-        const dateA = new Date(a.year, a.month - 1, a.payment_due_day);
-        const dateB = new Date(b.year, b.month - 1, b.payment_due_day);
+        // Get due day for sorting
+        const getDueDay = (invoice) => {
+          let day = invoice.payment_due_day;
+          if (!day) {
+            const tenant = tenantsData.find(t => t.id === invoice.tenant_id);
+            day = tenant?.payment_due_day || 1;
+          }
+          return day;
+        };
+        
+        const dateA = new Date(a.year, a.month - 1, getDueDay(a));
+        const dateB = new Date(b.year, b.month - 1, getDueDay(b));
         return dateA - dateB;
       }).slice(0, 5); // Top 5
       
@@ -205,7 +229,14 @@ const Dashboard = () => {
         ) : (
           <div className="space-y-3">
             {upcomingInvoices.map((invoice) => {
-              const dueDate = new Date(invoice.year, invoice.month - 1, invoice.payment_due_day);
+              // Get payment_due_day from invoice or tenant
+              let dueDay = invoice.payment_due_day;
+              if (!dueDay) {
+                const tenant = tenants.find(t => t.id === invoice.tenant_id);
+                dueDay = tenant?.payment_due_day;
+              }
+              
+              const dueDate = new Date(invoice.year, invoice.month - 1, dueDay);
               const today = new Date();
               const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
               const isOverdue = diffDays < 0;
@@ -241,7 +272,7 @@ const Dashboard = () => {
                         isDueSoon ? 'text-orange-700 font-bold' : 
                         'text-slate-600'
                       }`}>
-                        Due: {String(invoice.payment_due_day).padStart(2, '0')}/{String(invoice.month).padStart(2, '0')}/{invoice.year}
+                        Due: {String(dueDay).padStart(2, '0')}/{String(invoice.month).padStart(2, '0')}/{invoice.year}
                       </span>
                       {isOverdue && (
                         <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded font-bold">
