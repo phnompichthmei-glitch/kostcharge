@@ -52,7 +52,7 @@ const Dashboard = () => {
       
       console.log('📊 Widget Debug - Total invoices fetched:', data.length);
       
-      // Filter invoices with status 'pending' OR 'draft' and due within 5 days
+      // Filter invoices with status 'pending' OR 'draft' and due within 15 days
       const today = new Date();
       const upcoming = data.filter(inv => {
         // Only include pending or draft invoices
@@ -64,7 +64,7 @@ const Dashboard = () => {
         
         const dueDate = new Date(inv.year, inv.month - 1, inv.payment_due_day);
         const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-        const inRange = diffDays >= -5 && diffDays <= 5;
+        const inRange = diffDays >= -15 && diffDays <= 15;
         
         console.log(`${inRange ? '✅' : '❌'} ${inv.serial_number} (${inv.status}) - Due: ${inv.payment_due_day}/${inv.month}/${inv.year} | Diff: ${diffDays} hari`);
         
@@ -190,7 +190,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Clock className="w-5 h-5 text-orange-600" />
-            Upcoming Payments (5 Days)
+            Upcoming Payments (15 Days)
           </h2>
           <button 
             onClick={() => navigate('/invoices')}
