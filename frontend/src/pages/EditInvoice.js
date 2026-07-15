@@ -30,6 +30,7 @@ const EditInvoice = () => {
     tenant_id: '',
     month: '',
     year: '',
+    payment_due_day: '',  // Tanggal jatuh tempo
     rent: '',
     electricity_start: '',
     electricity_end: '',
@@ -71,6 +72,7 @@ const EditInvoice = () => {
         tenant_id: data.tenant_id,
         month: data.month,
         year: data.year,
+        payment_due_day: data.payment_due_day ? data.payment_due_day.toString() : '',  // Load payment_due_day
         rent: data.rent !== null ? data.rent.toString() : '',
         electricity_start: data.electricity_start !== null ? data.electricity_start.toString() : '',
         electricity_end: data.electricity_end !== null ? data.electricity_end.toString() : '',
@@ -187,7 +189,7 @@ const EditInvoice = () => {
               <p className="text-xs text-slate-500 mt-1">Tenant cannot be changed</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="month">{t('month')}</Label>
                 <Input
@@ -207,6 +209,19 @@ const EditInvoice = () => {
                   disabled
                   className="bg-slate-50"
                 />
+              </div>
+              <div>
+                <Label htmlFor="payment_due_day">Jatuh Tempo (1-31)</Label>
+                <Input
+                  id="payment_due_day"
+                  type="number"
+                  min="1"
+                  max="31"
+                  placeholder="Contoh: 5, 10, 15"
+                  value={formData.payment_due_day}
+                  onChange={(e) => setFormData({ ...formData, payment_due_day: e.target.value })}
+                />
+                <p className="text-xs text-slate-500 mt-1">Optional, bisa diisi manual</p>
               </div>
             </div>
 
