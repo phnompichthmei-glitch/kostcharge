@@ -28,6 +28,7 @@ const CreateInvoice = () => {
     tenant_id: '',
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
+    payment_due_day: '',  // Tanggal jatuh tempo
     rent: '',
     electricity_start: '',
     electricity_end: '',
@@ -55,7 +56,8 @@ const CreateInvoice = () => {
           rent: tenant.rent_amount.toString(),
           electricity_rate: tenant.electricity_rate_per_kwh.toString(),
           water_price: tenant.water_price_per_month.toString(),
-          water_occupants: tenant.occupants.toString()
+          water_occupants: tenant.occupants.toString(),
+          payment_due_day: tenant.payment_due_day ? tenant.payment_due_day.toString() : ''  // Auto-fill dari tenant
         }));
       }
     }
@@ -175,7 +177,7 @@ const CreateInvoice = () => {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="month">{t('month')}</Label>
                 <Select value={formData.month.toString()} onValueChange={(val) => setFormData({ ...formData, month: parseInt(val) })}>
@@ -199,6 +201,20 @@ const CreateInvoice = () => {
                   onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                   required
                 />
+              </div>
+              <div>
+                <Label htmlFor="payment_due_day">Jatuh Tempo (1-31)</Label>
+                <Input
+                  id="payment_due_day"
+                  type="number"
+                  min="1"
+                  max="31"
+                  placeholder="Contoh: 5, 10, 15"
+                  data-testid="payment-due-day-input"
+                  value={formData.payment_due_day}
+                  onChange={(e) => setFormData({ ...formData, payment_due_day: e.target.value })}
+                />
+                <p className="text-xs text-slate-500 mt-1">Auto-fill dari tenant</p>
               </div>
             </div>
 
