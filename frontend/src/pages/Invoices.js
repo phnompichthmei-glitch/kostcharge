@@ -75,11 +75,29 @@ const Invoices = () => {
   const loadInvoices = async () => {
     try {
       const params = {};
-      if (statusFilter !== 'all') params.status = statusFilter;
+      if (statusFilter !== 'all') params.status = statusFilter === 'due_soon' || statusFilter === 'overdue' ? 'pending' : statusFilter;
       if (searchQuery) params.search = searchQuery;
       
       const { data } = await axios.get(`${API}/invoices`, { params, withCredentials: true });
-      setInvoices(data);
+      
+      let filteredData = data;
+      
+      // Client-side filtering for due_soon and overdue
+      if (statusFilter === 'due_soon') {
+        filteredData = data.filter(inv => {
+          if (inv.status === 'paid') return false;
+          const daysUntil = getDaysUntilDue(inv);
+          return daysUntil !== null && daysUntil >= 0 && daysUntil <= 7;
+        });
+      } else if (statusFilter === 'overdue') {
+        filteredData = data.filter(inv => {
+          if (inv.status === 'paid') return false;
+          const daysUntil = getDaysUntilDue(inv);
+          return daysUntil !== null && daysUntil < 0;
+        });
+      }
+      
+      setInvoices(filteredData);
     } catch (error) {
       console.error('Error loading invoices:', error);
       toast.error('Failed to load invoices');
@@ -93,7 +111,41 @@ const Invoices = () => {
     loadInvoices();
   };
 
-  const downloadPDF = async (invoiceId, serialNumber) => {
+  const getDaysUntilDue = (invoice) => {
+    if (!invoice.payment_due_day) return null;
+    
+    const today = new Date();
+    const dueDate = new Date(invoice.year, invoice.month - 1, invoice.payment_due_day);
+    const diffTime = dueDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+
+  const getDueDateColor = (invoice) => {
+    if (invoice.status === 'paid') return 'text-slate-600'; // Neutral for paid
+    
+    const daysUntil = getDaysUntilDue(invoice);
+    if (daysUntil === null) return 'text-slate-600';
+    
+    if (daysUntil < 0) return 'text-red-600 font-bold'; // Overdue
+    if (daysUntil <= 3) return 'text-red-600 font-bold'; // Due soon (< 3 days)
+    if (daysUntil <= 7) return 'text-orange-600 font-semibold'; // Warning (3-7 days)
+    return 'text-green-600'; // Safe (> 7 days)
+  };
+
+  const getDueBadge = (invoice) => {
+    if (invoice.status === 'paid') return null;
+    
+    const daysUntil = getDaysUntilDue(invoice);
+    if (daysUntil === null) return null;
+    
+    if (daysUntil < 0) return { text: 'OVERDUE', color: 'bg-red-100 text-red-700' };
+    if (daysUntil === 0) return { text: 'DUE TODAY', color: 'bg-red-100 text-red-700' };
+    if (daysUntil <= 3) return { text: `${daysUntil}d left`, color: 'bg-orange-100 text-orange-700' };
+    if (daysUntil <= 7) return { text: `${daysUntil}d left`, color: 'bg-yellow-100 text-yellow-700' };
+    return null;
+  };
     try {
       const response = await axios.get(`${API}/invoices/${invoiceId}/pdf`, {
         params: { lang: i18n.language },
@@ -181,10 +233,11 @@ const Invoices = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="due_soon">🔔 Due This Week</SelectItem>
+              <SelectItem value="overdue">🔴 Overdue</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="pending">{t('pending')}</SelectItem>
               <SelectItem value="paid">{t('paid')}</SelectItem>
-              <SelectItem value="overdue">{t('overdue')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -217,18 +270,26 @@ const Invoices = () => {
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700">
                     {invoice.tenant_name} - {invoice.room_number}
                   </td>
-                  <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">
-                    {(() => {
-                      // Try invoice.payment_due_day first, fallback to tenant's payment_due_day
-                      let dueDay = invoice.payment_due_day;
-                      if (!dueDay) {
-                        const tenant = tenants.find(t => t.id === invoice.tenant_id);
-                        dueDay = tenant?.payment_due_day;
-                      }
-                      return dueDay 
-                        ? `${String(dueDay).padStart(2, '0')}/${String(invoice.month).padStart(2, '0')}/${invoice.year}`
-                        : `${String(invoice.month).padStart(2, '0')}/${invoice.year}`;
-                    })()}
+                  <td className="border-b border-slate-200 py-3 px-4">
+                    <div className="flex flex-col gap-1">
+                      <span className={`font-mono ${getDueDateColor(invoice)}`}>
+                        {(() => {
+                          let dueDay = invoice.payment_due_day;
+                          if (!dueDay) {
+                            const tenant = tenants.find(t => t.id === invoice.tenant_id);
+                            dueDay = tenant?.payment_due_day;
+                          }
+                          return dueDay 
+                            ? `${String(dueDay).padStart(2, '0')}/${String(invoice.month).padStart(2, '0')}/${invoice.year}`
+                            : `${String(invoice.month).padStart(2, '0')}/${invoice.year}`;
+                        })()}
+                      </span>
+                      {getDueBadge(invoice) && (
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${getDueBadge(invoice).color}`}>
+                          {getDueBadge(invoice).text}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-600 text-center font-mono text-sm">
                     {invoice.electricity_start != null ? invoice.electricity_start : '-'}

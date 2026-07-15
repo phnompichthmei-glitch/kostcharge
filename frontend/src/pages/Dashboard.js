@@ -15,6 +15,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('IDR');
+  const [upcomingInvoices, setUpcomingInvoices] = useState([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -40,12 +41,40 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error loading settings:', error);
     }
+
+  const loadUpcomingInvoices = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/invoices`, { 
+        params: { status: 'pending' },
+        withCredentials: true 
+      });
+      
+      // Filter invoices due within 7 days
+      const today = new Date();
+      const upcoming = data.filter(inv => {
+        if (!inv.payment_due_day) return false;
+        const dueDate = new Date(inv.year, inv.month - 1, inv.payment_due_day);
+        const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+        return diffDays >= -7 && diffDays <= 7; // Include overdue (last 7 days) and upcoming (next 7 days)
+      }).sort((a, b) => {
+        const dateA = new Date(a.year, a.month - 1, a.payment_due_day);
+        const dateB = new Date(b.year, b.month - 1, b.payment_due_day);
+        return dateA - dateB;
+      }).slice(0, 5); // Top 5
+      
+      setUpcomingInvoices(upcoming);
+    } catch (error) {
+      console.error('Error loading upcoming invoices:', error);
+    }
+  }, []);
+
   }, [i18n]);
 
   useEffect(() => {
     loadData();
     loadSettings();
-  }, [loadData, loadSettings]);
+    loadUpcomingInvoices();
+  }, [loadData, loadSettings, loadUpcomingInvoices]);
 
   useEffect(() => {
     if (socket) {
@@ -174,6 +203,85 @@ const Dashboard = () => {
             <div className="py-12 text-center text-sm text-slate-500">
               No invoices yet
             </div>
+
+
+      {/* Upcoming Payments Widget */}
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-orange-600" />
+            Upcoming Payments (7 Days)
+          </h2>
+          <button 
+            onClick={() => navigate('/invoices')}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            View All
+          </button>
+        </div>
+
+        {upcomingInvoices.length === 0 ? (
+          <p className="text-slate-500 text-sm">No upcoming payments</p>
+        ) : (
+          <div className="space-y-3">
+            {upcomingInvoices.map((invoice) => {
+              const dueDate = new Date(invoice.year, invoice.month - 1, invoice.payment_due_day);
+              const today = new Date();
+              const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+              const isOverdue = diffDays < 0;
+              const isDueSoon = diffDays >= 0 && diffDays <= 3;
+
+              return (
+                <div 
+                  key={invoice.id}
+                  onClick={() => navigate(`/invoices/${invoice.id}`)}
+                  className={`flex items-center justify-between p-3 rounded border cursor-pointer hover:bg-slate-50 transition-colors ${
+                    isOverdue ? 'border-red-200 bg-red-50' : 
+                    isDueSoon ? 'border-orange-200 bg-orange-50' : 
+                    'border-slate-200'
+                  }`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-sm font-bold text-slate-900">
+                        {invoice.room_number}
+                      </span>
+                      <span className="text-sm text-slate-600">
+                        {invoice.tenant_name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={`font-mono ${
+                        isOverdue ? 'text-red-700 font-bold' : 
+                        isDueSoon ? 'text-orange-700 font-bold' : 
+                        'text-slate-600'
+                      }`}>
+                        Due: {String(invoice.payment_due_day).padStart(2, '0')}/{String(invoice.month).padStart(2, '0')}/{invoice.year}
+                      </span>
+                      {isOverdue && (
+                        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded font-bold">
+                          OVERDUE
+                        </span>
+                      )}
+                      {isDueSoon && !isOverdue && (
+                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded font-bold">
+                          {diffDays === 0 ? 'DUE TODAY' : `${diffDays}d left`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono font-bold text-slate-900">
+                      {formatCurrency(invoice.total, invoice.currency)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
           )}
         </div>
 
