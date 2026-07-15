@@ -23,14 +23,25 @@ const Invoices = () => {
   const navigate = useNavigate();
   const socket = useSocket();
   const [invoices, setInvoices] = useState([]);
+  const [tenants, setTenants] = useState([]); // Store tenants for payment_due_day lookup
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    loadTenants(); // Load tenants first
     loadInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  const loadTenants = async () => {
+    try {
+      const { data } = await axios.get(`${API}/tenants`, { withCredentials: true });
+      setTenants(data);
+    } catch (error) {
+      console.error('Error loading tenants:', error);
+    }
+  };
 
   useEffect(() => {
     if (socket) {
@@ -170,11 +181,17 @@ const Invoices = () => {
                     {invoice.tenant_name} - {invoice.room_number}
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">
-                    {invoice.payment_due_day ? (
-                      `${String(invoice.payment_due_day).padStart(2, '0')}/${String(invoice.month).padStart(2, '0')}/${invoice.year}`
-                    ) : (
-                      `${String(invoice.month).padStart(2, '0')}/${invoice.year}`
-                    )}
+                    {(() => {
+                      // Try invoice.payment_due_day first, fallback to tenant's payment_due_day
+                      let dueDay = invoice.payment_due_day;
+                      if (!dueDay) {
+                        const tenant = tenants.find(t => t.id === invoice.tenant_id);
+                        dueDay = tenant?.payment_due_day;
+                      }
+                      return dueDay 
+                        ? `${String(dueDay).padStart(2, '0')}/${String(invoice.month).padStart(2, '0')}/${invoice.year}`
+                        : `${String(invoice.month).padStart(2, '0')}/${invoice.year}`;
+                    })()}
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-600 text-center font-mono text-sm">
                     {invoice.electricity_start != null ? invoice.electricity_start : '-'}
