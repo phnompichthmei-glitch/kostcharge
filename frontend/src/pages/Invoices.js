@@ -343,52 +343,88 @@ const Invoices = () => {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {invoices.length > 0 ? (
-          invoices.map((invoice) => (
-            <div
-              key={invoice.id}
-              className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 cursor-pointer hover:border-slate-300 transition-colors"
-              onClick={() => navigate(`/invoices/${invoice.id}`)}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <p className="text-xs text-slate-500 mb-1">{invoice.serial_number}</p>
-                  <h3 className="font-bold text-slate-950 text-base mb-1">{invoice.tenant_name}</h3>
-                  <p className="text-sm text-slate-600">Room {invoice.room_number}</p>
-                </div>
-                <span className={`inline-block px-3 py-1 rounded-sm text-xs font-bold text-white ${getStatusColor(invoice.status)}`}>
-                  {t(invoice.status)}
-                </span>
-              </div>
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Period:</span>
-                  <span className="text-slate-700 font-medium">{String(invoice.month).padStart(2, '0')}/{invoice.year}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Meteran Awal:</span>
-                  <span className="text-slate-700 font-mono">{invoice.electricity_start != null ? invoice.electricity_start : '-'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Meteran Akhir:</span>
-                  <span className="text-slate-700 font-mono">{invoice.electricity_end != null ? invoice.electricity_end : '-'}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">{t('total')}:</span>
-                  <span className="text-slate-950 font-mono font-bold">{formatCurrency(invoice.total, invoice.currency)}</span>
-                </div>
-              </div>
-              <Button
-                onClick={(e) => { e.stopPropagation(); downloadPDF(invoice.id, invoice.serial_number); }}
-                data-testid={`download-pdf-${invoice.id}`}
-                variant="outline"
-                className="w-full"
-                size="sm"
+          invoices.map((invoice) => {
+            const dueBadge = getDueBadge(invoice);
+            const dueDateColor = getDueDateColor(invoice);
+            
+            // Get payment_due_day (same logic as desktop)
+            let dueDay = invoice.payment_due_day;
+            if (!dueDay) {
+              const tenant = tenants.find(t => t.id === invoice.tenant_id);
+              dueDay = tenant?.payment_due_day;
+            }
+            
+            return (
+              <div
+                key={invoice.id}
+                className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 cursor-pointer hover:border-slate-300 transition-colors"
+                onClick={() => navigate(`/invoices/${invoice.id}`)}
               >
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </Button>
-            </div>
-          ))
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-500 mb-1">{invoice.serial_number}</p>
+                    <h3 className="font-bold text-slate-950 text-base mb-1">{invoice.tenant_name}</h3>
+                    <p className="text-sm text-slate-600">Room {invoice.room_number}</p>
+                  </div>
+                  <span className={`inline-block px-3 py-1 rounded-sm text-xs font-bold text-white ${getStatusColor(invoice.status)}`}>
+                    {t(invoice.status)}
+                  </span>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm items-center">
+                    <span className="text-slate-500">Period:</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`font-mono ${dueDateColor}`}>
+                        {dueDay 
+                          ? `${String(dueDay).padStart(2, '0')}/${String(invoice.month).padStart(2, '0')}/${invoice.year}`
+                          : `${String(invoice.month).padStart(2, '0')}/${invoice.year}`}
+                      </span>
+                      {dueBadge && (
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${dueBadge.color}`}>
+                          {dueBadge.text}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Meteran Awal:</span>
+                    <span className="text-slate-700 font-mono">{invoice.electricity_start != null ? invoice.electricity_start : '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Meteran Akhir:</span>
+                    <span className="text-slate-700 font-mono">{invoice.electricity_end != null ? invoice.electricity_end : '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">{t('total')}:</span>
+                    <span className="text-slate-950 font-mono font-bold">{formatCurrency(invoice.total, invoice.currency)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={(e) => { e.stopPropagation(); downloadPDF(invoice.id, invoice.serial_number); }}
+                    data-testid={`download-pdf-${invoice.id}`}
+                    variant="outline"
+                    className="flex-1"
+                    size="sm"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </Button>
+                  {invoice.status === 'draft' && (
+                    <Button
+                      onClick={(e) => { e.stopPropagation(); handleDeleteClick(invoice); }}
+                      data-testid={`delete-draft-mobile-${invoice.id}`}
+                      variant="outline"
+                      className="px-3"
+                      size="sm"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })
         ) : (
           <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-8 text-center text-slate-500">
             No invoices yet
