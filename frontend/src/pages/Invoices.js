@@ -169,8 +169,12 @@ const Invoices = () => {
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700">
                     {invoice.tenant_name} - {invoice.room_number}
                   </td>
-                  <td className="border-b border-slate-200 py-3 px-4 text-slate-700">
-                    {String(invoice.month).padStart(2, '0')}/{invoice.year}
+                  <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">
+                    {invoice.payment_due_day ? (
+                      `${String(invoice.payment_due_day).padStart(2, '0')}/${String(invoice.month).padStart(2, '0')}/${invoice.year}`
+                    ) : (
+                      `${String(invoice.month).padStart(2, '0')}/${invoice.year}`
+                    )}
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-600 text-center font-mono text-sm">
                     {invoice.electricity_start != null ? invoice.electricity_start : '-'}
