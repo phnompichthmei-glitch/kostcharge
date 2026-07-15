@@ -48,6 +48,19 @@ const EditInvoice = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Auto-fill payment_due_day from tenant if invoice doesn't have it
+  useEffect(() => {
+    if (formData.tenant_id && tenants.length > 0 && !formData.payment_due_day) {
+      const tenant = tenants.find(t => t.id === formData.tenant_id);
+      if (tenant && tenant.payment_due_day) {
+        setFormData(prev => ({
+          ...prev,
+          payment_due_day: tenant.payment_due_day.toString()
+        }));
+      }
+    }
+  }, [formData.tenant_id, tenants, formData.payment_due_day]);
+
   const loadTenants = async () => {
     try {
       const { data } = await axios.get(`${API}/tenants`, { withCredentials: true });
