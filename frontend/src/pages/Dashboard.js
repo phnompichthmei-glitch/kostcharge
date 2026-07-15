@@ -50,22 +50,32 @@ const Dashboard = () => {
         withCredentials: true 
       });
       
+      console.log('📊 Widget Debug - Total invoices fetched:', data.length);
+      
       // Filter invoices with status 'pending' OR 'draft' and due within 5 days
       const today = new Date();
       const upcoming = data.filter(inv => {
         // Only include pending or draft invoices
         if (inv.status !== 'pending' && inv.status !== 'draft') return false;
-        if (!inv.payment_due_day) return false;
+        if (!inv.payment_due_day) {
+          console.log(`⚠️ Invoice ${inv.serial_number} tidak punya payment_due_day`);
+          return false;
+        }
         
         const dueDate = new Date(inv.year, inv.month - 1, inv.payment_due_day);
         const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-        return diffDays >= -5 && diffDays <= 5; // Include overdue (last 5 days) and upcoming (next 5 days)
+        const inRange = diffDays >= -5 && diffDays <= 5;
+        
+        console.log(`${inRange ? '✅' : '❌'} ${inv.serial_number} (${inv.status}) - Due: ${inv.payment_due_day}/${inv.month}/${inv.year} | Diff: ${diffDays} hari`);
+        
+        return inRange;
       }).sort((a, b) => {
         const dateA = new Date(a.year, a.month - 1, a.payment_due_day);
         const dateB = new Date(b.year, b.month - 1, b.payment_due_day);
         return dateA - dateB;
       }).slice(0, 5); // Top 5
       
+      console.log(`🎯 Widget akan menampilkan ${upcoming.length} invoice`);
       setUpcomingInvoices(upcoming);
     } catch (error) {
       console.error('Error loading upcoming invoices:', error);
