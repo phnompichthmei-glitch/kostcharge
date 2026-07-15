@@ -45,18 +45,21 @@ const Dashboard = () => {
 
   const loadUpcomingInvoices = useCallback(async () => {
     try {
+      // Fetch all invoices (not filtered by status)
       const { data } = await axios.get(`${API}/invoices`, { 
-        params: { status: 'pending' },
         withCredentials: true 
       });
       
-      // Filter invoices due within 7 days
+      // Filter invoices with status 'pending' OR 'draft' and due within 5 days
       const today = new Date();
       const upcoming = data.filter(inv => {
+        // Only include pending or draft invoices
+        if (inv.status !== 'pending' && inv.status !== 'draft') return false;
         if (!inv.payment_due_day) return false;
+        
         const dueDate = new Date(inv.year, inv.month - 1, inv.payment_due_day);
         const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-        return diffDays >= -7 && diffDays <= 7; // Include overdue (last 7 days) and upcoming (next 7 days)
+        return diffDays >= -5 && diffDays <= 5; // Include overdue (last 5 days) and upcoming (next 5 days)
       }).sort((a, b) => {
         const dateA = new Date(a.year, a.month - 1, a.payment_due_day);
         const dateB = new Date(b.year, b.month - 1, b.payment_due_day);
@@ -177,7 +180,7 @@ const Dashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Clock className="w-5 h-5 text-orange-600" />
-            Upcoming Payments (7 Days)
+            Upcoming Payments (5 Days)
           </h2>
           <button 
             onClick={() => navigate('/invoices')}
@@ -216,8 +219,13 @@ const Dashboard = () => {
                       <span className="text-sm text-slate-600">
                         {invoice.tenant_name}
                       </span>
+                      {invoice.status === 'draft' && (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-bold">
+                          DRAFT
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-xs flex-wrap">
                       <span className={`font-mono ${
                         isOverdue ? 'text-red-700 font-bold' : 
                         isDueSoon ? 'text-orange-700 font-bold' : 
