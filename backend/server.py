@@ -228,6 +228,7 @@ class TenantCreate(BaseModel):
     electricity_rate_per_kwh: float
     occupants: int = 1
     status: str = "active"
+    payment_due_day: Optional[int] = None  # Day of month for rent payment (1-31)
 
 class TenantUpdate(BaseModel):
     name: Optional[str] = None
@@ -238,6 +239,7 @@ class TenantUpdate(BaseModel):
     electricity_rate_per_kwh: Optional[float] = None
     occupants: Optional[int] = None
     status: Optional[str] = None
+    payment_due_day: Optional[int] = None  # Day of month for rent payment (1-31)
 
 class InvoiceCreate(BaseModel):
     tenant_id: str

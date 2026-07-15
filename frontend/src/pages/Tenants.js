@@ -38,7 +38,8 @@ const Tenants = () => {
     water_price_per_month: '',
     electricity_rate_per_kwh: '',
     occupants: '1',
-    status: 'active'
+    status: 'active',
+    payment_due_day: ''  // Payment due day (1-31)
   });
 
   useEffect(() => {
@@ -107,7 +108,8 @@ const Tenants = () => {
       water_price_per_month: tenant.water_price_per_month.toString(),
       electricity_rate_per_kwh: tenant.electricity_rate_per_kwh.toString(),
       occupants: tenant.occupants.toString(),
-      status: tenant.status
+      status: tenant.status,
+      payment_due_day: tenant.payment_due_day ? tenant.payment_due_day.toString() : ''
     });
     setShowDialog(true);
   };
@@ -134,7 +136,8 @@ const Tenants = () => {
       water_price_per_month: '',
       electricity_rate_per_kwh: '',
       occupants: '1',
-      status: 'active'
+      status: 'active',
+      payment_due_day: ''
     });
   };
 
@@ -160,7 +163,7 @@ const Tenants = () => {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+      <div className="hidden md:block bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr>
@@ -168,6 +171,7 @@ const Tenants = () => {
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('roomNumber')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('contact')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('rentAmount')}</th>
+              <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-center">Jatuh Tempo</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('status')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('actions')}</th>
             </tr>
@@ -180,6 +184,15 @@ const Tenants = () => {
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">{tenant.room_number}</td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700">{tenant.contact}</td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700 font-mono">{tenant.rent_amount}</td>
+                  <td className="border-b border-slate-200 py-3 px-4 text-center">
+                    {tenant.payment_due_day ? (
+                      <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 rounded-sm text-xs font-mono font-bold">
+                        Tgl {tenant.payment_due_day}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">-</span>
+                    )}
+                  </td>
                   <td className="border-b border-slate-200 py-3 px-4">
                     <span className={`inline-block px-3 py-1 rounded-sm text-xs font-bold ${tenant.status === 'active' ? 'bg-green-600 text-white' : 'bg-slate-400 text-white'}`}>
                       {t(tenant.status)}
@@ -207,7 +220,7 @@ const Tenants = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-500">No tenants yet</td>
+                <td colSpan="7" className="py-8 text-center text-slate-500">No tenants yet</td>
               </tr>
             )}
           </tbody>
@@ -349,6 +362,20 @@ const Tenants = () => {
                 onChange={(e) => setFormData({ ...formData, occupants: e.target.value })}
                 required
               />
+            </div>
+            <div>
+              <Label htmlFor="payment_due_day">Tanggal Jatuh Tempo (1-31)</Label>
+              <Input
+                id="payment_due_day"
+                type="number"
+                min="1"
+                max="31"
+                placeholder="Contoh: 5, 10, 15"
+                data-testid="tenant-due-day-input"
+                value={formData.payment_due_day}
+                onChange={(e) => setFormData({ ...formData, payment_due_day: e.target.value })}
+              />
+              <p className="text-xs text-slate-500 mt-1">Tanggal setiap bulan untuk pembayaran sewa</p>
             </div>
             <div>
               <Label htmlFor="status">{t('status')}</Label>
