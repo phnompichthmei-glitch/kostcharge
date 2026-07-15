@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import axios from 'axios';
-import { Plus, Search, Download } from 'lucide-react';
+import { Plus, Search, Download, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { formatCurrency, getStatusColor } from '../utils/helpers';
@@ -14,6 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -27,6 +37,8 @@ const Invoices = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
 
   useEffect(() => {
     loadTenants(); // Load tenants first
@@ -102,6 +114,31 @@ const Invoices = () => {
       toast.error('Failed to download PDF');
     }
   };
+
+  const handleDeleteClick = (invoice) => {
+    setInvoiceToDelete(invoice);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!invoiceToDelete) return;
+
+    try {
+      await axios.delete(`${API}/invoices/${invoiceToDelete.id}`, {
+        withCredentials: true
+      });
+      
+      loadInvoices();
+      setDeleteDialogOpen(false);
+      setInvoiceToDelete(null);
+      
+      toast.success('Draft deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting draft:', error);
+      toast.error('Failed to delete draft');
+    }
+  };
+
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="text-slate-500">Loading...</div></div>;
@@ -208,13 +245,26 @@ const Invoices = () => {
                     </span>
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); downloadPDF(invoice.id, invoice.serial_number); }}
-                      data-testid={`download-pdf-${invoice.id}`}
-                      className="p-2 hover:bg-slate-100 rounded-sm transition-colors"
-                    >
-                      <Download className="w-4 h-4 text-slate-600" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); downloadPDF(invoice.id, invoice.serial_number); }}
+                        data-testid={`download-pdf-${invoice.id}`}
+                        className="p-2 hover:bg-slate-100 rounded-sm transition-colors"
+                        title="Download PDF"
+                      >
+                        <Download className="w-4 h-4 text-slate-600" />
+                      </button>
+                      {invoice.status === 'draft' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteClick(invoice); }}
+                          data-testid={`delete-draft-${invoice.id}`}
+                          className="p-2 hover:bg-red-50 rounded-sm transition-colors"
+                          title="Delete Draft"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -282,6 +332,25 @@ const Invoices = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Draft Invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete draft <strong>{invoiceToDelete?.serial_number}</strong>? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
