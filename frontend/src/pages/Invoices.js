@@ -150,6 +150,7 @@ const Invoices = () => {
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('serialNumber')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('tenant')}</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">Period</th>
+              <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-center">Jatuh Tempo</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-center">Meteran Awal</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50 text-center">Meteran Akhir</th>
               <th className="border-b border-slate-200 py-3 px-4 font-bold text-slate-900 bg-slate-50">{t('total')}</th>
@@ -171,6 +172,15 @@ const Invoices = () => {
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-700">
                     {String(invoice.month).padStart(2, '0')}/{invoice.year}
+                  </td>
+                  <td className="border-b border-slate-200 py-3 px-4 text-center">
+                    {invoice.payment_due_day ? (
+                      <span className="inline-block px-2 py-1 bg-orange-50 text-orange-700 rounded-sm text-xs font-mono font-bold">
+                        {String(invoice.payment_due_day).padStart(2, '0')}/{String(invoice.month).padStart(2, '0')}/{invoice.year}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-xs">-</span>
+                    )}
                   </td>
                   <td className="border-b border-slate-200 py-3 px-4 text-slate-600 text-center font-mono text-sm">
                     {invoice.electricity_start != null ? invoice.electricity_start : '-'}
@@ -199,7 +209,7 @@ const Invoices = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="py-8 text-center text-slate-500">No invoices yet</td>
+                <td colSpan="9" className="py-8 text-center text-slate-500">No invoices yet</td>
               </tr>
             )}
           </tbody>

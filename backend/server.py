@@ -539,7 +539,7 @@ async def create_invoice(data: InvoiceCreate, user: dict = Depends(get_current_u
         
         rent = data.rent or 0
         deposit = data.deposit or 0
-        total = rent + electricity_cost + water_cost + deposit
+        total = rent + electricity_cost + water_cost  # Deposit NOT included in total
         
         # Generate serial number for draft
         serial_number = f"DRAFT-{str(ObjectId())[:8]}"
@@ -550,6 +550,7 @@ async def create_invoice(data: InvoiceCreate, user: dict = Depends(get_current_u
             "tenant_id": data.tenant_id,
             "tenant_name": tenant["name"],
             "room_number": tenant["room_number"],
+            "payment_due_day": tenant.get("payment_due_day"),  # Include tenant's payment due day
             "month": data.month,
             "year": data.year,
             "rent": data.rent,
@@ -583,8 +584,8 @@ async def create_invoice(data: InvoiceCreate, user: dict = Depends(get_current_u
         # Calculate water
         water_cost = data.water_price * data.water_occupants
         
-        # Calculate total
-        total = data.rent + electricity_cost + water_cost + data.deposit
+        # Calculate total (rent + electricity + water, WITHOUT deposit)
+        total = data.rent + electricity_cost + water_cost
         
         # Generate serial number
         serial_number = await generate_invoice_serial(data.year, data.month)
@@ -595,6 +596,7 @@ async def create_invoice(data: InvoiceCreate, user: dict = Depends(get_current_u
             "tenant_id": data.tenant_id,
             "tenant_name": tenant["name"],
             "room_number": tenant["room_number"],
+            "payment_due_day": tenant.get("payment_due_day"),  # Include tenant's payment due day
             "month": data.month,
             "year": data.year,
             "rent": data.rent,
@@ -654,11 +656,11 @@ async def update_invoice(invoice_id: str, data: InvoiceUpdate, user: dict = Depe
         if None in [rent, elec_start, elec_end, elec_rate, water_occupants, water_price, deposit]:
             raise HTTPException(status_code=400, detail="All billing fields are required to finalize invoice")
         
-        # Calculate totals
+        # Calculate totals (WITHOUT deposit in total)
         electricity_usage = elec_end - elec_start
         electricity_cost = electricity_usage * elec_rate
         water_cost = water_price * water_occupants
-        total = rent + electricity_cost + water_cost + deposit
+        total = rent + electricity_cost + water_cost  # Deposit NOT included
         
         # Generate proper serial number
         serial_number = await generate_invoice_serial(invoice["year"], invoice["month"])
@@ -692,7 +694,7 @@ async def update_invoice(invoice_id: str, data: InvoiceUpdate, user: dict = Depe
         if water_occupants is not None and water_price is not None:
             water_cost = water_price * water_occupants
         
-        total = (rent or 0) + electricity_cost + water_cost + (deposit or 0)
+        total = (rent or 0) + electricity_cost + water_cost  # Deposit NOT included
         
         update_data["electricity_usage"] = electricity_usage
         update_data["electricity_cost"] = electricity_cost
