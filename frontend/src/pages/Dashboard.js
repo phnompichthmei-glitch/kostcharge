@@ -41,6 +41,7 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error loading settings:', error);
     }
+  }, [i18n]);
 
   const loadUpcomingInvoices = useCallback(async () => {
     try {
@@ -68,8 +69,6 @@ const Dashboard = () => {
     }
   }, []);
 
-  }, [i18n]);
-
   useEffect(() => {
     loadData();
     loadSettings();
@@ -78,10 +77,22 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (socket) {
-      socket.on('invoice_created', loadData);
-      socket.on('invoice_updated', loadData);
-      socket.on('invoice_status_changed', loadData);
-      socket.on('invoice_deleted', loadData);
+      socket.on('invoice_created', () => {
+        loadData();
+        loadUpcomingInvoices();
+      });
+      socket.on('invoice_updated', () => {
+        loadData();
+        loadUpcomingInvoices();
+      });
+      socket.on('invoice_status_changed', () => {
+        loadData();
+        loadUpcomingInvoices();
+      });
+      socket.on('invoice_deleted', () => {
+        loadData();
+        loadUpcomingInvoices();
+      });
       
       return () => {
         socket.off('invoice_created');
@@ -90,7 +101,7 @@ const Dashboard = () => {
         socket.off('invoice_deleted');
       };
     }
-  }, [socket, loadData]);
+  }, [socket, loadData, loadUpcomingInvoices]);
 
   if (loading) {
     return (
@@ -161,52 +172,8 @@ const Dashboard = () => {
         })}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-        <div className="border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-950">{t('recentInvoices')}</h2>
-          <button
-            onClick={() => navigate('/invoices')}
-            className="text-xs sm:text-sm text-slate-600 hover:text-slate-950 font-medium transition-colors px-3 py-1.5 hover:bg-slate-50 rounded-sm"
-          >
-            View all
-          </button>
-        </div>
-        
-        {/* Mobile: Card View */}
-        <div className="block sm:hidden">
-          {stats?.recent_invoices?.length > 0 ? (
-            <div className="divide-y divide-slate-200">
-              {stats.recent_invoices.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  onClick={() => navigate(`/invoices/${invoice.id}`)}
-                  className="p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="font-mono text-sm font-medium text-slate-950">
-                      {invoice.serial_number}
-                    </div>
-                    <span className={`inline-block px-2 py-1 rounded-sm text-xs font-bold text-white ${getStatusColor(invoice.status)}`}>
-                      {t(invoice.status)}
-                    </span>
-                  </div>
-                  <div className="text-sm text-slate-700 mb-1">
-                    {invoice.tenant_name} - {invoice.room_number}
-                  </div>
-                  <div className="font-mono text-base font-bold text-slate-950">
-                    {formatCurrency(invoice.total, invoice.currency)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-sm text-slate-500">
-              No invoices yet
-            </div>
-
-
       {/* Upcoming Payments Widget */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-6">
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-6 mb-6 sm:mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Clock className="w-5 h-5 text-orange-600" />
@@ -282,6 +249,48 @@ const Dashboard = () => {
         )}
       </div>
 
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+        <div className="border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-950">{t('recentInvoices')}</h2>
+          <button
+            onClick={() => navigate('/invoices')}
+            className="text-xs sm:text-sm text-slate-600 hover:text-slate-950 font-medium transition-colors px-3 py-1.5 hover:bg-slate-50 rounded-sm"
+          >
+            View all
+          </button>
+        </div>
+        
+        {/* Mobile: Card View */}
+        <div className="block sm:hidden">
+          {stats?.recent_invoices?.length > 0 ? (
+            <div className="divide-y divide-slate-200">
+              {stats.recent_invoices.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  onClick={() => navigate(`/invoices/${invoice.id}`)}
+                  className="p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="font-mono text-sm font-medium text-slate-950">
+                      {invoice.serial_number}
+                    </div>
+                    <span className={`inline-block px-2 py-1 rounded-sm text-xs font-bold text-white ${getStatusColor(invoice.status)}`}>
+                      {t(invoice.status)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-700 mb-1">
+                    {invoice.tenant_name} - {invoice.room_number}
+                  </div>
+                  <div className="font-mono text-base font-bold text-slate-950">
+                    {formatCurrency(invoice.total, invoice.currency)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-sm text-slate-500">
+              No invoices yet
+            </div>
           )}
         </div>
 

@@ -146,6 +146,8 @@ const Invoices = () => {
     if (daysUntil <= 7) return { text: `${daysUntil}d left`, color: 'bg-yellow-100 text-yellow-700' };
     return null;
   };
+
+  const downloadPDF = async (invoiceId, serialNumber) => {
     try {
       const response = await axios.get(`${API}/invoices/${invoiceId}/pdf`, {
         params: { lang: i18n.language },
