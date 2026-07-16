@@ -88,8 +88,8 @@ const CreateInvoice = () => {
     const elecUsage = (parseFloat(formData.electricity_end) || 0) - (parseFloat(formData.electricity_start) || 0);
     const elecCost = elecUsage * (parseFloat(formData.electricity_rate) || 0);
     const waterCost = (parseFloat(formData.water_price) || 0) * (parseInt(formData.water_occupants) || 1);
-    const deposit = parseFloat(formData.deposit) || 0;
-    return rent + elecCost + waterCost + deposit;
+    // Deposit is NOT included in total (separate line item)
+    return rent + elecCost + waterCost;
   };
 
   const handleSubmit = async (e, isDraft = false) => {
