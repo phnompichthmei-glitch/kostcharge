@@ -114,6 +114,29 @@ const Invoices = () => {
         });
       }
       
+      // Sort: Paid invoices at the bottom, others at top
+      filteredData.sort((a, b) => {
+        // Status priority: draft/pending first, paid last
+        const statusPriority = (status) => {
+          if (status === 'paid') return 2;
+          if (status === 'draft') return 0;
+          if (status === 'pending') return 1;
+          return 1;
+        };
+        
+        const priorityA = statusPriority(a.status);
+        const priorityB = statusPriority(b.status);
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB; // Lower priority first
+        }
+        
+        // Within same status, sort by date (newest first)
+        const dateA = new Date(a.year, a.month - 1, 1);
+        const dateB = new Date(b.year, b.month - 1, 1);
+        return dateB - dateA;
+      });
+      
       setInvoices(filteredData);
     } catch (error) {
       console.error('Error loading invoices:', error);
