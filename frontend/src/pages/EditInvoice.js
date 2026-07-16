@@ -134,6 +134,9 @@ const EditInvoice = () => {
     
     try {
       const payload = {
+        month: parseInt(formData.month),
+        year: parseInt(formData.year),
+        payment_due_day: formData.payment_due_day ? parseInt(formData.payment_due_day) : null,
         rent: formData.rent ? parseFloat(formData.rent) : null,
         electricity_start: formData.electricity_start ? parseFloat(formData.electricity_start) : null,
         electricity_end: formData.electricity_end ? parseFloat(formData.electricity_end) : null,
