@@ -205,22 +205,39 @@ const EditInvoice = () => {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="month">{t('month')}</Label>
-                <Input
-                  id="month"
-                  type="number"
-                  value={formData.month}
-                  disabled
-                  className="bg-slate-50"
-                />
+                <Select 
+                  value={formData.month.toString()} 
+                  onValueChange={(val) => setFormData({ ...formData, month: parseInt(val) })}
+                >
+                  <SelectTrigger data-testid="month-select">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">January</SelectItem>
+                    <SelectItem value="2">February</SelectItem>
+                    <SelectItem value="3">March</SelectItem>
+                    <SelectItem value="4">April</SelectItem>
+                    <SelectItem value="5">May</SelectItem>
+                    <SelectItem value="6">June</SelectItem>
+                    <SelectItem value="7">July</SelectItem>
+                    <SelectItem value="8">August</SelectItem>
+                    <SelectItem value="9">September</SelectItem>
+                    <SelectItem value="10">October</SelectItem>
+                    <SelectItem value="11">November</SelectItem>
+                    <SelectItem value="12">December</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="year">{t('year')}</Label>
                 <Input
                   id="year"
                   type="number"
+                  min="2020"
+                  max="2100"
                   value={formData.year}
-                  disabled
-                  className="bg-slate-50"
+                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) || '' })}
+                  placeholder="2026"
                 />
               </div>
               <div>
