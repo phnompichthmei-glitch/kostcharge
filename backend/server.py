@@ -257,6 +257,9 @@ class InvoiceCreate(BaseModel):
     is_draft: bool = False
 
 class InvoiceUpdate(BaseModel):
+    month: Optional[int] = None
+    year: Optional[int] = None
+    payment_due_day: Optional[int] = None
     rent: Optional[float] = None
     electricity_start: Optional[float] = None
     electricity_end: Optional[float] = None
@@ -268,7 +271,6 @@ class InvoiceUpdate(BaseModel):
     is_draft: Optional[bool] = None
     notes: Optional[str] = None
     status: Optional[str] = None
-    payment_due_day: Optional[int] = None  # Allow updating payment_due_day
 
 class SettingsUpdate(BaseModel):
     default_currency: Optional[str] = None
@@ -663,8 +665,12 @@ async def update_invoice(invoice_id: str, data: InvoiceUpdate, user: dict = Depe
         water_cost = water_price * water_occupants
         total = rent + electricity_cost + water_cost  # Deposit NOT included
         
+        # Get month/year (use updated values if provided)
+        month = update_data.get("month", invoice["month"])
+        year = update_data.get("year", invoice["year"])
+        
         # Generate proper serial number
-        serial_number = await generate_invoice_serial(invoice["year"], invoice["month"])
+        serial_number = await generate_invoice_serial(year, month)
         
         update_data["electricity_usage"] = electricity_usage
         update_data["electricity_cost"] = electricity_cost
