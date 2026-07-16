@@ -75,15 +75,31 @@ const Invoices = () => {
   const loadInvoices = async () => {
     try {
       const params = {};
-      if (statusFilter !== 'all') params.status = statusFilter === 'due_soon' || statusFilter === 'overdue' ? 'pending' : statusFilter;
+      // Fetch all invoices if using client-side filters
+      const clientSideFilters = ['due_soon', 'overdue', 'due_today', 'due_tomorrow'];
+      if (statusFilter !== 'all' && !clientSideFilters.includes(statusFilter)) {
+        params.status = statusFilter;
+      }
       if (searchQuery) params.search = searchQuery;
       
       const { data } = await axios.get(`${API}/invoices`, { params, withCredentials: true });
       
       let filteredData = data;
       
-      // Client-side filtering for due_soon and overdue
-      if (statusFilter === 'due_soon') {
+      // Client-side filtering for date-based filters
+      if (statusFilter === 'due_today') {
+        filteredData = data.filter(inv => {
+          if (inv.status === 'paid') return false;
+          const daysUntil = getDaysUntilDue(inv);
+          return daysUntil === 0; // Due today
+        });
+      } else if (statusFilter === 'due_tomorrow') {
+        filteredData = data.filter(inv => {
+          if (inv.status === 'paid') return false;
+          const daysUntil = getDaysUntilDue(inv);
+          return daysUntil === 1; // Due tomorrow
+        });
+      } else if (statusFilter === 'due_soon') {
         filteredData = data.filter(inv => {
           if (inv.status === 'paid') return false;
           const daysUntil = getDaysUntilDue(inv);
@@ -112,10 +128,17 @@ const Invoices = () => {
   };
 
   const getDaysUntilDue = (invoice) => {
-    if (!invoice.payment_due_day) return null;
+    // Get payment_due_day from invoice or tenant
+    let dueDay = invoice.payment_due_day;
+    if (!dueDay) {
+      const tenant = tenants.find(t => t.id === invoice.tenant_id);
+      dueDay = tenant?.payment_due_day;
+    }
+    
+    if (!dueDay) return null;
     
     const today = new Date();
-    const dueDate = new Date(invoice.year, invoice.month - 1, invoice.payment_due_day);
+    const dueDate = new Date(invoice.year, invoice.month - 1, dueDay);
     const diffTime = dueDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
@@ -235,6 +258,8 @@ const Invoices = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="due_today">🔴 Due Today</SelectItem>
+              <SelectItem value="due_tomorrow">🟠 Due Tomorrow</SelectItem>
               <SelectItem value="due_soon">🔔 Due This Week</SelectItem>
               <SelectItem value="overdue">🔴 Overdue</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
