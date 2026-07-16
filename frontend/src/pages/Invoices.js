@@ -103,7 +103,8 @@ const Invoices = () => {
         filteredData = data.filter(inv => {
           if (inv.status === 'paid') return false;
           const daysUntil = getDaysUntilDue(inv);
-          return daysUntil !== null && daysUntil >= 0 && daysUntil <= 7;
+          // Include overdue up to 7 days ago AND due within next 7 days
+          return daysUntil !== null && daysUntil >= -7 && daysUntil <= 7;
         });
       } else if (statusFilter === 'overdue') {
         filteredData = data.filter(inv => {
