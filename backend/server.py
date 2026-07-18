@@ -750,9 +750,7 @@ async def generate_invoice_pdf(invoice_id: str, lang: Optional[str] = None, user
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
-    # Prevent PDF generation for drafts
-    if invoice.get("status") == "draft":
-        raise HTTPException(status_code=400, detail="Cannot generate PDF for draft invoice. Please finalize the invoice first.")
+    # Allow PDF generation for draft (removed validation block)
     
     # Priority: 1. Query param from frontend, 2. User settings from DB, 3. Default 'id'
     if not lang:
