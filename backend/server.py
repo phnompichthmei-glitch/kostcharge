@@ -278,9 +278,39 @@ class SettingsUpdate(BaseModel):
 
 # Helper function to generate invoice serial number
 async def generate_invoice_serial(year: int, month: int) -> str:
+    """Generate unique invoice serial number with retry logic for duplicates"""
     year_month = f"{year}{month:02d}"
-    count = await db.invoices.count_documents({"year": year, "month": month})
-    return f"INV-{year_month}-{(count + 1):04d}"
+    
+    # Find highest existing serial number for this year/month
+    # Only count invoices with actual serial numbers (non-draft)
+    pipeline = [
+        {
+            "$match": {
+                "year": year,
+                "month": month,
+                "serial_number": {"$regex": f"^INV-{year_month}-"}
+            }
+        },
+        {
+            "$project": {
+                "serial_number": 1,
+                "number": {
+                    "$toInt": {"$substr": ["$serial_number", 13, -1]}
+                }
+            }
+        },
+        {"$sort": {"number": -1}},
+        {"$limit": 1}
+    ]
+    
+    result = await db.invoices.aggregate(pipeline).to_list(1)
+    
+    if result:
+        next_number = result[0]["number"] + 1
+    else:
+        next_number = 1
+    
+    return f"INV-{year_month}-{next_number:04d}"
 
 # Auth endpoints
 @api_router.post("/auth/register")
@@ -669,8 +699,24 @@ async def update_invoice(invoice_id: str, data: InvoiceUpdate, user: dict = Depe
         month = update_data.get("month", invoice["month"])
         year = update_data.get("year", invoice["year"])
         
-        # Generate proper serial number
-        serial_number = await generate_invoice_serial(year, month)
+        # Generate proper serial number with retry on duplicate
+        max_retries = 3
+        serial_number = None
+        for attempt in range(max_retries):
+            try:
+                serial_number = await generate_invoice_serial(year, month)
+                # Test if serial exists
+                existing = await db.invoices.find_one({"serial_number": serial_number})
+                if not existing:
+                    break
+                # If exists, retry with incremented number
+                if attempt < max_retries - 1:
+                    continue
+                else:
+                    raise HTTPException(status_code=500, detail="Failed to generate unique serial number")
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise HTTPException(status_code=500, detail=f"Error generating serial: {str(e)}")
         
         update_data["electricity_usage"] = electricity_usage
         update_data["electricity_cost"] = electricity_cost
