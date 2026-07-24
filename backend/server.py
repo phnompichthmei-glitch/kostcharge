@@ -647,16 +647,16 @@ async def update_invoice(invoice_id: str, data: InvoiceUpdate, user: dict = Depe
     
     # If converting draft to final invoice
     if invoice.get("status") == "draft" and data.is_draft == False:
-        # Validate all required fields are present
+        # Validate all required fields are present (deposit defaults to 0 if not set)
         rent = update_data.get("rent", invoice.get("rent"))
         elec_start = update_data.get("electricity_start", invoice.get("electricity_start"))
         elec_end = update_data.get("electricity_end", invoice.get("electricity_end"))
         elec_rate = update_data.get("electricity_rate", invoice.get("electricity_rate"))
         water_occupants = update_data.get("water_occupants", invoice.get("water_occupants"))
         water_price = update_data.get("water_price", invoice.get("water_price"))
-        deposit = update_data.get("deposit", invoice.get("deposit"))
+        deposit = update_data.get("deposit", invoice.get("deposit", 0))  # Default to 0
         
-        if None in [rent, elec_start, elec_end, elec_rate, water_occupants, water_price, deposit]:
+        if None in [rent, elec_start, elec_end, elec_rate, water_occupants, water_price]:
             raise HTTPException(status_code=400, detail="All billing fields are required to finalize invoice")
         
         # Calculate totals (WITHOUT deposit in total)
